@@ -28,6 +28,9 @@ extern Scheduler *scheduler;			// the ready list
 extern Interrupt *interrupt;			// interrupt status
 extern Statistics *stats;			// performance metrics
 extern Timer *timer;				// the hardware alarm clock
+//-----------------------------------------------------------------------------
+extern int tid_used[128];			// Mark wether TID_x was used
+//-----------------------------------------------------------------------------
 
 #ifdef USER_PROGRAM
 #include "machine.h"

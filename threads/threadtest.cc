@@ -12,6 +12,7 @@
 #include "copyright.h"
 #include "system.h"
 #include "elevatortest.h"
+#include "thread.h"
 
 // testnum is set in main.cc
 int testnum = 1;
@@ -52,6 +53,53 @@ ThreadTest1()
     t->Fork(SimpleThread, (void*)1);
     SimpleThread(0);
 }
+//-----------------------------------------------------------------------------
+//-----------------------------------------------------------------------------
+//-----------------------------------------------------------------------------
+void ThreadTest2(){
+	DEBUG('t', "Entering ThreadTest2");
+
+	printf("-----------------Test for Maximum number of Threads-------------\n");
+	for(int i=0; i < 131; i++){
+		Thread *thr = new Thread("Thread-test");
+		printf("---%s was created with threadID %d. UserID: %d\n", thr->getName(), thr->getTID(), thr->getUID());
+	}
+}
+
+void CheckTS(Thread *t){
+	printf("---Thread Name:%s TID:%d Status:%s \n", t->getName(), t->getTID(), t->getStatus());
+}
+
+void CheckAllTS(){
+	IntStatus oldLevel = interrupt->SetLevel(IntOff);
+	
+	List *Thread_list;
+	Thread_list = scheduler->getReadyList(); 
+	CheckTS(currentThread);//-------------------
+	if(!Thread_list->IsEmpty())
+		Thread_list->Mapcar(CheckTS);
+	printf("\n\n");
+
+    (void) interrupt->SetLevel(oldLevel);
+}
+
+void ThreadTest3(){
+	DEBUG('t', "Entering ThreadTest2");
+
+	printf("----------------------Check All Threads' Status-------------------\n");
+	Thread *thr[3];
+	for(int i=0; i < 3; i++)
+		thr[i] = new Thread("Thread-test");
+	for(int i=0; i < 3; i++){
+		thr[i]->Fork(CheckAllTS, 0);
+	}
+	CheckAllTS();
+	//printf("------------------------Check Ends--------------------------------\n");
+}
+//-----------------------------------------------------------------------------
+//-----------------------------------------------------------------------------
+//-----------------------------------------------------------------------------
+
 
 //----------------------------------------------------------------------
 // ThreadTest
@@ -65,7 +113,15 @@ ThreadTest()
     case 1:
 	ThreadTest1();
 	break;
-    default:
+//-----------------------------------------------------------------------------
+	case 2:
+	ThreadTest2();
+	break;
+	case 3:
+	ThreadTest3();
+	break;
+ //-----------------------------------------------------------------------------
+   default:
 	printf("No test specified.\n");
 	break;
     }

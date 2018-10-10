@@ -95,6 +95,12 @@ main(int argc, char **argv)
         testnum = atoi(argv[1]);
         argCount++;
         break;
+//-----------------------------------------------------------------------------
+	case 'T':
+		if(argv[0][2] == 'S'){
+			testnum = 3;
+			break;
+		}
       default:
         testnum = 1;
         break;
@@ -158,7 +164,7 @@ main(int argc, char **argv)
         }
 #endif // NETWORK
     }
-
+	//printf("-------------------To Finish One.\n");
     currentThread->Finish();	// NOTE: if the procedure "main" 
 				// returns, then the program "nachos"
 				// will exit (as any other normal program
@@ -167,5 +173,6 @@ main(int argc, char **argv)
 				// to those threads by saying that the
 				// "main" thread is finished, preventing
 				// it from returning.
+	//printf("-------------------Finished One.\n");
     return(0);			// Not reached...
 }

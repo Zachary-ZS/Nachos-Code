@@ -79,6 +79,10 @@ class Thread {
     // THEY MUST be in this position for SWITCH to work.
     int* stackTop;			 // the current stack pointer
     void *machineState[MachineStateSize];  // all registers except for stackTop
+//-----------------------------------------------------------------------------
+	int UID;
+	int TID;
+//-----------------------------------------------------------------------------
 
   public:
     Thread(char* debugName);		// initialize a Thread 
@@ -101,6 +105,19 @@ class Thread {
     void setStatus(ThreadStatus st) { status = st; }
     char* getName() { return (name); }
     void Print() { printf("%s, ", name); }
+//-----------------------------------------------------------------------------
+	int getUID() { return UID; }
+	int getTID() { return TID; }
+	char* getStatus() {
+		switch (status){
+			case JUST_CREATED: return "JUST_CREATED";
+			case RUNNING: return "RUNNING";
+			case READY: return "READY";
+			case BLOCKED: return "BLOCKED";
+			default: return "Unknown";
+		}
+	}
+//-----------------------------------------------------------------------------
 
   private:
     // some of the private data for this class is listed above
@@ -142,5 +159,8 @@ void ThreadRoot();
 // Stop running oldThread and start running newThread
 void SWITCH(Thread *oldThread, Thread *newThread);
 }
+//-----------------------------------------------------------------------------
+//-----------------------------------------------------------------------------
+//extern void CheckTS(Thread *t);
 
 #endif // THREAD_H

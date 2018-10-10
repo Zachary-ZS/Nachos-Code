@@ -38,6 +38,27 @@ Thread::Thread(char* threadName)
     stackTop = NULL;
     stack = NULL;
     status = JUST_CREATED;
+//-----------------------------------------------------------------------------
+// Find the first number not used for TID and use it
+// Now I have no idea how to allocate UID
+	//UID = getuid();
+	// Default UID:
+	UID = 1000;
+	TID = -1;	
+	for(int i = 0; i < 128; i++){
+		if(!tid_used[i]){
+			TID = i;
+			tid_used[i] = 1;
+			break;
+		}
+	}
+	if(TID == -1){
+		printf("Failed to create the thread! You have reached the maximum number of threads!\n");
+		ASSERT(FALSE);
+		return;
+	}
+//-----------------------------------------------------------------------------
+
 #ifdef USER_PROGRAM
     space = NULL;
 #endif
@@ -60,6 +81,11 @@ Thread::~Thread()
     DEBUG('t', "Deleting thread \"%s\"\n", name);
 
     ASSERT(this != currentThread);
+//-----------------------------------------------------------------------------
+	tid_used[TID] = 0;
+//	printf("Thread ID : %d Finished\n",TID);
+//-----------------------------------------------------------------------------
+
     if (stack != NULL)
 	DeallocBoundedArray((char *) stack, StackSize * sizeof(int));
 }
@@ -147,7 +173,8 @@ Thread::Finish ()
     ASSERT(this == currentThread);
     
     DEBUG('t', "Finishing thread \"%s\"\n", getName());
-    
+	//printf("Thread ID : %d Finished\n",TID);
+
     threadToBeDestroyed = currentThread;
     Sleep();					// invokes SWITCH
     // not reached
@@ -317,4 +344,8 @@ Thread::RestoreUserState()
     for (int i = 0; i < NumTotalRegs; i++)
 	machine->WriteRegister(i, userRegisters[i]);
 }
+//-----------------------------------------------------------------------------
+//-----------------------------------------------------------------------------
+//
+
 #endif

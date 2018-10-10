@@ -18,6 +18,9 @@ Interrupt *interrupt;			// interrupt status
 Statistics *stats;			// performance metrics
 Timer *timer;				// the hardware timer device,
 					// for invoking context switches
+//-----------------------------------------------------------------------------
+int tid_used[128];			// Mark wether TID_x was used
+//-----------------------------------------------------------------------------
 
 #ifdef FILESYS_NEEDED
 FileSystem  *fileSystem;
@@ -80,6 +83,12 @@ Initialize(int argc, char **argv)
     int argCount;
     char* debugArgs = "";
     bool randomYield = FALSE;
+//-----------------------------------------------------------------------------
+// Initialize the tid_used vector
+	for(int i=0; i < 128; i++){
+		tid_used[i] = 0; 
+	}
+//-----------------------------------------------------------------------------
 
 #ifdef USER_PROGRAM
     bool debugUserProg = FALSE;	// single step user program
