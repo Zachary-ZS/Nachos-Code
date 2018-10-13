@@ -56,18 +56,18 @@ ThreadTest1()
 //-----------------------------------------------------------------------------
 //-----------------------------------------------------------------------------
 //-----------------------------------------------------------------------------
+void CheckTS(Thread *t){
+	printf("---Thread Name:%s TID:%d Status:%s \n", t->getName(), t->getTID(), t->getStatus());
+}
+
 void ThreadTest2(){
 	DEBUG('t', "Entering ThreadTest2");
 
 	printf("-----------------Test for Maximum number of Threads-------------\n");
 	for(int i=0; i < 131; i++){
 		Thread *thr = new Thread("Thread-test");
-		printf("---%s was created with threadID %d. UserID: %d\n", thr->getName(), thr->getTID(), thr->getUID());
+		thr->Fork(CheckTS, (void *)thr);
 	}
-}
-
-void CheckTS(Thread *t){
-	printf("---Thread Name:%s TID:%d Status:%s \n", t->getName(), t->getTID(), t->getStatus());
 }
 
 void CheckAllTS(){

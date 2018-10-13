@@ -44,18 +44,13 @@ Thread::Thread(char* threadName)
 	//UID = getuid();
 	// Default UID:
 	UID = 1000;
-	TID = -1;	
+	TID = -1;
 	for(int i = 0; i < 128; i++){
 		if(!tid_used[i]){
 			TID = i;
 			tid_used[i] = 1;
 			break;
 		}
-	}
-	if(TID == -1){
-		printf("Failed to create the thread! You have reached the maximum number of threads!\n");
-		ASSERT(FALSE);
-		return;
 	}
 //-----------------------------------------------------------------------------
 
@@ -115,13 +110,22 @@ Thread::Fork(VoidFunctionPtr func, void *arg)
 {
     DEBUG('t', "Forking thread \"%s\" with func = 0x%x, arg = %d\n",
 	  name, (int) func, (int*) arg);
-    
-    StackAllocate(func, arg);
 
+//-----------------------------------------------------------------------------------------------
+	if(TID == -1){
+		printf("Failed to create Cuz you've reached the maximum number of threads.\n");
+		//ASSERT(FALSE);
+		return;
+	}
+    
+	
+    StackAllocate(func, arg);
+	printf("----Thread Name:%s TID:%d UID:%d Created.----\n",name,TID,UID);
     IntStatus oldLevel = interrupt->SetLevel(IntOff);
     scheduler->ReadyToRun(this);	// ReadyToRun assumes that interrupts 
 					// are disabled!
     (void) interrupt->SetLevel(oldLevel);
+	return;
 }    
 
 //----------------------------------------------------------------------
