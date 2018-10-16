@@ -82,10 +82,11 @@ class Thread {
 //-----------------------------------------------------------------------------
 	int UID;
 	int TID;
+	int Priority;
 //-----------------------------------------------------------------------------
 
   public:
-    Thread(char* debugName);		// initialize a Thread 
+    Thread(char* debugName, int pri = 24);		// initialize a Thread 
     ~Thread(); 				// deallocate a Thread
 					// NOTE -- thread being deleted
 					// must not be running when delete 
@@ -117,6 +118,7 @@ class Thread {
 			default: return "Unknown";
 		}
 	}
+	int getPri() { return Priority; }
 //-----------------------------------------------------------------------------
 
   private:

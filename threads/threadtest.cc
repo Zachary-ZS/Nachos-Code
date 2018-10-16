@@ -57,7 +57,7 @@ ThreadTest1()
 //-----------------------------------------------------------------------------
 //-----------------------------------------------------------------------------
 void CheckTS(Thread *t){
-	printf("---Thread Name:%s TID:%d Status:%s \n", t->getName(), t->getTID(), t->getStatus());
+	printf("---Thread Name:%s TID:%d Priority:%d Status:%s \n", t->getName(), t->getTID(), t->getPri(), t->getStatus());
 }
 
 void ThreadTest2(){
@@ -66,7 +66,7 @@ void ThreadTest2(){
 	printf("-----------------Test for Maximum number of Threads-------------\n");
 	for(int i=0; i < 131; i++){
 		Thread *thr = new Thread("Thread-test");
-		thr->Fork(CheckTS, (void *)thr);
+		thr->	Fork(CheckTS, (void *)thr);
 	}
 }
 
@@ -96,6 +96,23 @@ void ThreadTest3(){
 	CheckAllTS();
 	//printf("------------------------Check Ends--------------------------------\n");
 }
+// Test for Scheduler
+void testfor4(){
+	for(int i = 0; i < 3; i++){
+		CheckTS(currentThread);
+		if(i == 0){
+			Thread *tnew = new Thread("Thread new", 5);
+			tnew->Fork(CheckTS, (void *)tnew);
+		}
+			
+	}	
+}
+
+void ThreadTest4(){
+	Thread *t = new Thread("Thread 1", 10);
+	t->Fork(testfor4, 0);
+}
+
 //-----------------------------------------------------------------------------
 //-----------------------------------------------------------------------------
 //-----------------------------------------------------------------------------
@@ -119,6 +136,9 @@ ThreadTest()
 	break;
 	case 3:
 	ThreadTest3();
+	break;
+	case 4:
+	ThreadTest4();
 	break;
  //-----------------------------------------------------------------------------
    default:

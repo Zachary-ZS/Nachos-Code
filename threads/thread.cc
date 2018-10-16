@@ -32,7 +32,8 @@
 //	"threadName" is an arbitrary string, useful for debugging.
 //----------------------------------------------------------------------
 
-Thread::Thread(char* threadName)
+// Add Priority to threads, with default val = 24(0-24)
+Thread::Thread(char* threadName, int pri = 24)
 {
     name = threadName;
     stackTop = NULL;
@@ -43,6 +44,17 @@ Thread::Thread(char* threadName)
 // Now I have no idea how to allocate UID
 	//UID = getuid();
 	// Default UID:
+	if(pri > 24){
+		printf("--E: Priority maximum is 24 --\n");
+		Priority = 24;
+	}
+	else if(pri < 0){
+		printf("--E: Priority minimum is 0 --\n");
+		Priority = 0;
+	}
+	else
+		Priority = pri;
+
 	UID = 1000;
 	TID = -1;
 	for(int i = 0; i < 128; i++){
@@ -120,7 +132,7 @@ Thread::Fork(VoidFunctionPtr func, void *arg)
     
 	
     StackAllocate(func, arg);
-	printf("----Thread Name:%s TID:%d UID:%d Created.----\n",name,TID,UID);
+	//printf("----Thread Name:%s TID:%d UID:%d Created.----\n",name,TID,UID);
     IntStatus oldLevel = interrupt->SetLevel(IntOff);
     scheduler->ReadyToRun(this);	// ReadyToRun assumes that interrupts 
 					// are disabled!
