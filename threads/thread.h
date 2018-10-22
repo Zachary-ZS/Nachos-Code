@@ -49,6 +49,7 @@
 // The SPARC and MIPS only need 10 registers, but the Snake needs 18.
 // For simplicity, this is just the max over all architectures.
 #define MachineStateSize 18 
+#define TimeSliceMax 30
 
 
 // Size of the thread's private execution stack.
@@ -83,6 +84,7 @@ class Thread {
 	int UID;
 	int TID;
 	int Priority;
+	int TimeSlice;
 //-----------------------------------------------------------------------------
 
   public:
@@ -119,6 +121,10 @@ class Thread {
 		}
 	}
 	int getPri() { return Priority; }
+	void setPri(int i) { Priority = i; }
+	void resetTime() { TimeSlice = TimeSliceMax; }
+	void reduceTime() { TimeSlice--; }
+	bool timeout() { return !TimeSlice; }
 //-----------------------------------------------------------------------------
 
   private:

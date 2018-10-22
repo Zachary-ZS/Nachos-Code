@@ -151,7 +151,12 @@ void
 Interrupt::OneTick()
 {
     MachineStatus old = status;
-
+	
+	currentThread->reduceTime();
+	if(currentThread->timeout()){
+		yieldOnReturn = true;
+		currentThread->resetTime();
+	}
 // advance simulated time
     if (status == SystemMode) {
         stats->totalTicks += SystemTick;

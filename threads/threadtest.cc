@@ -112,6 +112,21 @@ void ThreadTest4(){
 	Thread *t = new Thread("Thread 1", 10);
 	t->Fork(testfor4, 0);
 }
+void testfor5(int num){
+	for(int i = 0; i < num; i++){
+		printf("---%s TID:%d Pri:%d looped for %d times.\n",currentThread->getName(), currentThread->getTID(), currentThread->getPri(), i);
+		interrupt->SetLevel(IntOn);
+		interrupt->SetLevel(IntOff);
+	}
+}
+void ThreadTest5(){
+	Thread *t1 = new Thread("Thr-1", 20);
+	Thread *t2 = new Thread("Thr-2", 15);
+	Thread *t3 = new Thread("Thr-3", 10);
+	t1->Fork(testfor5, (void*)80);
+	t2->Fork(testfor5, (void*)80);
+	t3->Fork(testfor5, (void*)80);
+}
 
 //-----------------------------------------------------------------------------
 //-----------------------------------------------------------------------------
@@ -139,6 +154,9 @@ ThreadTest()
 	break;
 	case 4:
 	ThreadTest4();
+	break;
+	case 5:
+	ThreadTest5();
 	break;
  //-----------------------------------------------------------------------------
    default:

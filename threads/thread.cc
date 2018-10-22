@@ -39,6 +39,7 @@ Thread::Thread(char* threadName, int pri = 24)
     stackTop = NULL;
     stack = NULL;
     status = JUST_CREATED;
+	TimeSlice = TimeSliceMax;
 //-----------------------------------------------------------------------------
 // Find the first number not used for TID and use it
 // Now I have no idea how to allocate UID
