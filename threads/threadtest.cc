@@ -13,6 +13,7 @@
 #include "system.h"
 #include "elevatortest.h"
 #include "thread.h"
+#include "synch.h"
 
 // testnum is set in main.cc
 int testnum = 1;
@@ -127,6 +128,188 @@ void ThreadTest5(){
 	t2->Fork(testfor5, (void*)80);
 	t3->Fork(testfor5, (void*)80);
 }
+//-----------------------------------------------------------------------------
+//--------The following is for synchronization lab-----------------------------
+//-----------------------------------------------------------------------------
+List *buffer;
+#define maxnum_buf 5
+//-----------------------------------------------------------------------------
+// Implementation of Producer&Consumer with Lock & Condition.------------------
+Lock *mutex_buf;
+Condition *cond_buf;
+void producer1(int num = 1){
+	
+	mutex_buf->Acquire();
+	while(num--){
+		//int *tmp = 1;
+		if(buffer->NumInList() == maxnum_buf){
+			printf("Sorry! No more empty slots to produce in.\n");
+			cond_buf->Wait(mutex_buf);
+		}
+		buffer->Append((void*)1);
+		printf("----------%s Produced a new item, now the number of items is %d.\n", currentThread->getName(), buffer->NumInList());
+		if(buffer->NumInList() == 1){
+			cond_buf->Signal(mutex_buf);
+		}
+		//printf("Finished.\n");
+	}
+	printf("Finished Producing.\n");
+	mutex_buf->Release();
+}
+void consumer1(int num = 1){
+
+	mutex_buf->Acquire();
+	while(num--){
+		if(buffer->NumInList() == 0){
+			printf("Sorry! The buffer is now empty!\n");
+			cond_buf->Wait(mutex_buf);
+		}
+		buffer->Remove();
+		printf("----------%s Consumed an item, now the number of items is %d.\n", currentThread->getName(), buffer->NumInList());
+		if(buffer->NumInList() == maxnum_buf - 1){
+			cond_buf->Signal(mutex_buf);
+		}
+	}
+	printf("Finished Consuming.\n");
+	mutex_buf->Release();
+}
+
+void ThreadTest6(){
+
+	buffer = new List();
+	mutex_buf = new Lock("Mutex_Buffer");
+	cond_buf = new Condition("Condition_Buffer");
+//---------------------------------------------------------
+// Easy Test or Complex Test?
+
+/*
+	Thread *t1 = new Thread("Thr-Producer");
+	Thread *t2 = new Thread("Thr-Consumer");
+
+	t1->Fork(producer1, (void*)8);
+	t2->Fork(consumer1, (void*)10);
+*/
+	Thread *p1 = new Thread("Thr-Producer1");
+	Thread *p2 = new Thread("Thr-Producer2");
+	Thread *p3 = new Thread("Thr-Producer3");
+	Thread *c1 = new Thread("Thr-Consumer1");
+	Thread *c2 = new Thread("Thr-Consumer2");
+	Thread *c3 = new Thread("Thr-Consumer3");
+
+	p1->Fork(producer1, (void*)4);
+	c1->Fork(consumer1, (void*)6);
+	p2->Fork(producer1, (void*)5);
+	c2->Fork(consumer1, (void*)4);
+	p3->Fork(producer1, (void*)4);
+	c3->Fork(consumer1, (void*)3);
+	
+}
+
+
+//-----------------------------------------------------------------------------
+// Implementation of Producer&Consumer with semaphore.-------------------------
+Lock *lock_buff;
+Semaphore *sema_full;
+Semaphore *sema_empty;
+void producer2(int num = 1){
+	while(num--){
+		sema_empty->P();
+		lock_buff->Acquire();
+		buffer->Append((void*)1);
+		printf("----------%s Produced a new item, now the number of items is %d.\n", currentThread->getName(), buffer->NumInList());
+		lock_buff->Release();
+		sema_full->V();
+	}
+	printf("Finished Producing.\n");
+}
+void consumer2(int num = 1){
+	while(num--){
+		sema_full->P();
+		lock_buff->Acquire();
+		buffer->Remove();
+		printf("----------%s Consumed an item, now the number of items is %d.\n", currentThread->getName(), buffer->NumInList());
+		lock_buff->Release();
+		sema_empty->V();
+	}
+	printf("Finished Consuming.\n");
+}
+
+
+void ThreadTest7(){
+	buffer = new List();
+	lock_buff = new Lock("sema_buff");
+	sema_full = new Semaphore("sema_full", 0);
+	sema_empty = new Semaphore("sema_empty", maxnum_buf);
+//---------------------------------------------------------
+// Easy Test or Complex Test?
+
+/*
+	Thread *t1 = new Thread("Thr-Producer");
+	Thread *t2 = new Thread("Thr-Consumer");
+
+	t1->Fork(producer2, (void*)8);
+	t2->Fork(consumer2, (void*)10);
+*/
+	Thread *p1 = new Thread("Thr-Producer1");
+	Thread *p2 = new Thread("Thr-Producer2");
+	Thread *p3 = new Thread("Thr-Producer3");
+	Thread *c1 = new Thread("Thr-Consumer1");
+	Thread *c2 = new Thread("Thr-Consumer2");
+	Thread *c3 = new Thread("Thr-Consumer3");
+
+	p1->Fork(producer2, (void*)4);
+	c1->Fork(consumer2, (void*)6);
+	p2->Fork(producer2, (void*)5);
+	c2->Fork(consumer2, (void*)4);
+	p3->Fork(producer2, (void*)4);
+	c3->Fork(consumer2, (void*)3);
+	
+}
+
+
+//-----------------------------------------------------------------------------
+// Implementation of barrior with lock & condition.----------------------------
+#define together_num 8
+int *working_thread_num;
+Lock *mutex_int;
+Condition *cond_int;
+void runningthr(){
+	
+	printf("------It's %s(TID: %d) now running! :)\n",currentThread->getName(), currentThread->getTID());
+	mutex_int->Acquire();
+	(*working_thread_num)++;
+	if(*working_thread_num < together_num){
+		printf("---There're (%d/%d) threads running to here thus we're blocked.\n", *working_thread_num, together_num);
+		cond_int->Wait(mutex_int);
+	}
+	else if(*working_thread_num == together_num){
+		printf("---(%d/%d) threads running to here so we're all waked.\n", *working_thread_num, together_num);
+		cond_int->Broadcast(mutex_int);
+	}
+	
+	printf("----------%s(TID: %d) reached the new world and now number of threads is %d.\n", currentThread->getName(), currentThread->getTID(), *working_thread_num);
+	
+	//printf("Finished Producing.\n");
+	mutex_int->Release();
+}
+
+void ThreadTest8(){
+
+	working_thread_num = new int(0);
+	mutex_int = new Lock("Mutex_Int");
+	cond_int = new Condition("Condition_Int");
+//---------------------------------------------------------
+
+	Thread* t[8];
+	for(int i = 0; i < 8; i++)
+		t[i] = new Thread("Thr-test");
+	for(int i = 0; i < 8; i++)
+		t[i]->Fork(runningthr, 0);
+
+}
+
+
+
 
 //-----------------------------------------------------------------------------
 //-----------------------------------------------------------------------------
@@ -157,6 +340,15 @@ ThreadTest()
 	break;
 	case 5:
 	ThreadTest5();
+	break;
+	case 6:
+	ThreadTest6();
+	break;
+	case 7:
+	ThreadTest7();
+	break;
+	case 8:
+	ThreadTest8();
 	break;
  //-----------------------------------------------------------------------------
    default:
