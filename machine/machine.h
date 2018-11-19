@@ -25,7 +25,9 @@
 #include "utility.h"
 #include "translate.h"
 #include "disk.h"
+#ifdef USER_PROGRAM
 #include "bitmap.h"
+#endif
 
 // Definitions related to the size, and format of user memory
 
@@ -35,7 +37,7 @@
 
 // ----------------------------------------------------------------------------------------
 // Change it from 32 to 64 ,cuz I think 32 is too small(and may cause ASSERT wrongs).
-#define NumPhysPages    64
+#define NumPhysPages    32
 #define MemorySize 	(NumPhysPages * PageSize)
 #define TLBSize		4		// if there is a TLB, make it small
 
@@ -162,8 +164,9 @@ class Machine {
 				// code and data, while executing
     int registers[NumTotalRegs]; // CPU registers, for executing user programs
     //--------------------------------------------------------------------------------------
+#ifdef USER_PROGRAM
     BitMap *pagemap; // each bit records the use of phypage.
-
+#endif
 
 // NOTE: the hardware translation of virtual addresses in the user program
 // to physical addresses (relative to the beginning of "mainMemory")

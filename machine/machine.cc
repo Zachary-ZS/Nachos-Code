@@ -62,9 +62,11 @@ Machine::Machine(bool debug)
     for (i = 0; i < MemorySize; i++)
       	mainMemory[i] = 0;
       //------------------------------- init the page map --------------------------------------------------------------
+#ifdef USER_PROGRAM
     pagemap = new BitMap(NumPhysPages);
     for (i = 0; i < NumPhysPages; i++)
         pagemap->Clear(i);
+#endif
 #ifdef USE_TLB
     tlb = new TranslationEntry[TLBSize];
     LUtime = new int[TLBSize];

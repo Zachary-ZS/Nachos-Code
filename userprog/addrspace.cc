@@ -78,7 +78,9 @@ AddrSpace::AddrSpace(OpenFile *executable)
     numPages = divRoundUp(size, PageSize);
     size = numPages * PageSize;
 
-    ASSERT(numPages <= NumPhysPages);		// check we're not trying
+    //------here I changed the PageSize while doing exercise1, cuz it always asserts here.----------------------
+    //----------Now in exercise 7 , I directly noted this line cuz we needn't it with VM -----------------------
+    //ASSERT(numPages <= NumPhysPages);		// check we're not trying
 						// to run anything too big --
 						// at least until we have
 						// virtual memory
@@ -89,18 +91,22 @@ AddrSpace::AddrSpace(OpenFile *executable)
     pageTable = new TranslationEntry[numPages];
     for (i = 0; i < numPages; i++) {
 	pageTable[i].virtualPage = i;	// for now, virtual page # = phys page #
-	//pageTable[i].physicalPage = i;
+    pageTable[i].valid = FALSE;
+    }
+	/*pageTable[i].physicalPage = i;
     // ----------Now we use pagemap to find an empty page -----------------------------------------------
+    
     pageTable[i].physicalPage = machine->pagemap->Find();
     ASSERT(pageTable[i].physicalPage != -1);
-    printf("allocated physicalPage %d.\n", pageTable[i].physicalPage);
-	pageTable[i].valid = TRUE;
+    //printf("allocated physicalPage %d.\n", pageTable[i].physicalPage);
+	pageTable[i].valid = FALSE;
 	pageTable[i].use = FALSE;
 	pageTable[i].dirty = FALSE;
 	pageTable[i].readOnly = FALSE;  // if the code segment was entirely on 
 					// a separate page, we could set its 
 					// pages to be read-only
-    }
+    }*/
+//ooooooooooooooooooooooooooooooooooooooooooooo   ooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo
     
     //---------------------------------------------------------------------------------------------------
 // zero out the entire address space, to zero the unitialized data segment 
@@ -108,6 +114,9 @@ AddrSpace::AddrSpace(OpenFile *executable)
 //    bzero(machine->mainMemory, size);
 
 // then, copy in the code and data segments into memory
+    //===================================================================================================
+    //======= exercise 5 changed follwing:----and now exercise 7 uses lazy-loading so no need to copy by bytes.
+    /*
     if (noffH.code.size > 0) {
         DEBUG('a', "Initializing code segment, at 0x%x, size %d\n", 
 			noffH.code.virtualAddr, noffH.code.size);
@@ -132,7 +141,31 @@ AddrSpace::AddrSpace(OpenFile *executable)
             executable->ReadAt(&(machine->mainMemory[Taddr]),
             1, pos++);
         }
+    }*/
+
+    fileSystem->Create("virtual_memory", size);
+    OpenFile *ofile = fileSystem->Open("virtual_memory");
+    // ------------ Load data etc into virtual memory which is represented as a file-------------------------------------
+    ASSERT(ofile != NULL);
+    if(noffH.code.size > 0){
+        int index1 = noffH.code.inFileAddr;
+        int index2 = noffH.code.virtualAddr;
+        char tmp;
+        for(int j = 0; j < noffH.code.size; j++){
+            executable->ReadAt(&(tmp), 1, index1++);
+            ofile->WriteAt(&(tmp), 1, index2++);
+        }
     }
+    if(noffH.initData.size > 0){
+        int index1 = noffH.initData.inFileAddr;
+        int index2 = noffH.initData.virtualAddr;
+        char tmp;
+        for(int j = 0; j < noffH.initData.size; j++){
+            executable->ReadAt(&(tmp), 1, index1++);
+            ofile->WriteAt(&(tmp), 1, index2++);
+        }
+    }
+    delete ofile;
 
 }
 

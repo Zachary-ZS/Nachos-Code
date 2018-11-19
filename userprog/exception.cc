@@ -24,6 +24,8 @@
 #include "copyright.h"
 #include "system.h"
 #include "syscall.h"
+#include "openfile.h"
+#include "filesys.h"
 
 //----------------------------------------------------------------------
 // ExceptionHandler
@@ -83,16 +85,44 @@ ExceptionHandler(ExceptionType which)
 		interrupt->Halt();
 	}
 	else if (which == PageFaultException){
-    	// tlb miss or pagetable miss?
-		if(machine->tlb == NULL){
-			ASSERT(FALSE);
-    		// shouldn't miss in pagetable
+    	// tlb miss or pagetable miss?-------------------------------------------------------------------
+		if(machine->pageTable != NULL){
+			
+    		OpenFile *ofile = fileSystem->Open("virtual_memory");
+            ASSERT(ofile != NULL);
+            int vpn = (unsigned) machine->ReadRegister(BadVAddrReg) / PageSize;
+            int index = machine->pagemap->Find();
+            if(index == -1){
+                // no empty physical page, needs to kick out one
+                // here we use a quite naive algorithm, we kick out the first phypage.
+                for(int j = 0; j < machine->pageTableSize; j++){
+                    if(machine->pageTable[j].physicalPage == 0){
+                        // dirty -> we should write back
+                        if(machine -> pageTable[j].dirty == TRUE){
+                            ofile -> WriteAt(&(machine->mainMemory[index * PageSize]), PageSize, machine->pageTable[j].virtualPage * PageSize);
+                            machine -> pageTable[j].valid = FALSE;
+                            break;
+                        }
+                    }
+                }
+                index = 0;
+            }
+            printf("--Caused PageFault! Loading page-vpn:%d from VM into pagetable [%d]\n", vpn, index);
+            ofile->ReadAt(&(machine->mainMemory[index * PageSize]), PageSize, vpn * PageSize);
+            machine->pageTable[vpn].valid = TRUE;
+            machine->pageTable[vpn].physicalPage = index;
+            machine->pageTable[vpn].use = FALSE;
+            machine->pageTable[vpn].dirty = FALSE;
+            machine->pageTable[vpn].readOnly = FALSE;
+            
+            delete ofile;
+            
 		}
     	else{   // tlb miss, VA causing exception is now in BadVAreg
     		int vpn = (unsigned) machine->ReadRegister(BadVAddrReg) / PageSize;
 
     		ASSERT(vpn < machine->pageTableSize);
-    		ASSERT(machine->pageTable[vpn].valid);
+    		//ASSERT(machine->pageTable[vpn].valid);
 
     		int index = -1;
     		for(int i = 0; i < TLBSize; i++){
