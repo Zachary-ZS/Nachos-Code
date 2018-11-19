@@ -48,16 +48,85 @@
 //	are in machine.h.
 //----------------------------------------------------------------------
 
+
+// -----------------------------------------------------------------------------------------
+// Replacement algorithms:
+int FIFO(){
+	for(int i = 0; i < TLBSize - 1; i++)
+		machine->tlb[i] = machine->tlb[i + 1];
+	return TLBSize - 1;
+}
+int LRU(){
+	//    Here we need an array to store the state of each tlb plot
+	// which is LUtime, and we find the least recnetly used plot.
+	int index = -1;
+    int maxt = 0;
+	for(int i = 0; i < TLBSize; i++){
+		//printf("%d\n", machine->LUtime[i]);
+        if(machine->LUtime[i] > maxt){
+			index = i;
+            maxt = machine->LUtime[i];
+		}
+		//else if(machine->LUtime[i] != 0)
+		//	machine->LUtime[i]++;
+	}
+	ASSERT(index != -1);
+	return index;
+}
 void
 ExceptionHandler(ExceptionType which)
 {
-    int type = machine->ReadRegister(2);
+	int type = machine->ReadRegister(2);
 
-    if ((which == SyscallException) && (type == SC_Halt)) {
-	DEBUG('a', "Shutdown, initiated by user program.\n");
-   	interrupt->Halt();
-    } else {
-	printf("Unexpected user mode exception %d %d\n", which, type);
-	ASSERT(FALSE);
+	if ((which == SyscallException) && (type == SC_Halt)) {
+		DEBUG('a', "Shutdown, initiated by user program.\n");
+		interrupt->Halt();
+	}
+	else if (which == PageFaultException){
+    	// tlb miss or pagetable miss?
+		if(machine->tlb == NULL){
+			ASSERT(FALSE);
+    		// shouldn't miss in pagetable
+		}
+    	else{   // tlb miss, VA causing exception is now in BadVAreg
+    		int vpn = (unsigned) machine->ReadRegister(BadVAddrReg) / PageSize;
+
+    		ASSERT(vpn < machine->pageTableSize);
+    		ASSERT(machine->pageTable[vpn].valid);
+
+    		int index = -1;
+    		for(int i = 0; i < TLBSize; i++){
+    			if(!machine->tlb[i].valid){
+    				index = i;
+    				break;
+    			}
+    		}
+    		// No empty plot in tlb
+    		if(index == -1){
+    			// Repalcement Algorithm: now support FIFO & LRU, choose only one while using
+    			//index = FIFO(); // FIFO
+    			index = LRU();  // LRU
+
+    		}
+    		// load the page into the tlb
+    		machine->tlb[index].valid = true;
+    		machine->tlb[index].use = false;
+    		machine->tlb[index].dirty = false;
+    		machine->tlb[index].virtualPage = vpn;
+    		machine->tlb[index].physicalPage = machine->pageTable[vpn].physicalPage;
+    		machine->tlb[index].readOnly = false;
+    	}
+    	
+    }
+    else if(which == SyscallException && type == SC_Exit){
+        printf("The program exits...\n");
+        machine->clearpage();
+        currentThread->Finish();
+        int nextPC = machine->ReadRegister(NextPCReg);
+        machine->WriteRegister(PCReg, nextPC);
+    }
+    else {
+    	printf("Unexpected user mode exception %d %d\n", which, type);
+    	ASSERT(FALSE);
     }
 }

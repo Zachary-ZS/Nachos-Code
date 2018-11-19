@@ -70,6 +70,8 @@ WordToMachine(unsigned int word) { return WordToHost(word); }
 unsigned short
 ShortToMachine(unsigned short shortword) { return ShortToHost(shortword); }
 
+int visitnum = 0;
+int hitnum = 0;
 
 //----------------------------------------------------------------------
 // Machine::ReadMem
@@ -199,8 +201,9 @@ Machine::Translate(int virtAddr, int* physAddr, int size, bool writing)
 	return AddressErrorException;
     }
     
+    //--------------------------------------------------------------------------------------
     // we must have either a TLB or a page table, but not both!
-    ASSERT(tlb == NULL || pageTable == NULL);	
+    //ASSERT(tlb == NULL || pageTable == NULL);	
     ASSERT(tlb != NULL || pageTable != NULL);	
 
 // calculate the virtual page number, and offset within the page,
@@ -219,18 +222,33 @@ Machine::Translate(int virtAddr, int* physAddr, int size, bool writing)
 	    return PageFaultException;
 	}
 	entry = &pageTable[vpn];
-    } else {
+    } 
+    
+    else {
+    	visitnum++;
         for (entry = NULL, i = 0; i < TLBSize; i++)
     	    if (tlb[i].valid && (tlb[i].virtualPage == vpn)) {
-		entry = &tlb[i];			// FOUND!
-		break;
-	    }
-	if (entry == NULL) {				// not found
-    	    DEBUG('a', "*** no valid TLB entry found for this virtual page!\n");
-    	    return PageFaultException;		// really, this is a TLB fault,
+				entry = &tlb[i];			// FOUND!
+				//-----------------------------------------------------------------------
+				// update val for LUtime
+				hitnum++;
+				//int tmp = LUtime[i];
+				//printf("Got it and its LUtime: %d\n",tmp);
+				LUtime[i] = 1;
+				for(int j = 0; j<TLBSize; j++){
+					if(j == i || LUtime[j] == 0)
+						continue;
+					LUtime[j]++;
+				}
+
+				break;
+	    	}
+			if (entry == NULL) {				// not found
+    	    	DEBUG('a', "*** no valid TLB entry found for this virtual page!\n");
+    	    	return PageFaultException;		// really, this is a TLB fault,
 						// the page may be in memory,
 						// but not in the TLB
-	}
+		}
     }
 
     if (entry->readOnly && writing) {	// trying to write to a read-only page
@@ -252,4 +270,9 @@ Machine::Translate(int virtAddr, int* physAddr, int size, bool writing)
     ASSERT((*physAddr >= 0) && ((*physAddr + size) <= MemorySize));
     DEBUG('a', "phys addr = 0x%x\n", *physAddr);
     return NoException;
+}
+
+
+void Machine::reportTLB(){
+    printf("Total visits: %d   Hit times: %d   Hit rate: %lf\n\n", visitnum, hitnum, (double)hitnum/(double)visitnum);
 }

@@ -20,24 +20,43 @@
 //	memory, and jump to it.
 //----------------------------------------------------------------------
 
+void test_mul_thr(){
+    printf("The second thread now starts!\n");
+    machine->Run();
+}
+
 void
 StartProcess(char *filename)
 {
     OpenFile *executable = fileSystem->Open(filename);
     AddrSpace *space;
+    OpenFile *executable2 = fileSystem->Open(filename);
+    AddrSpace *space2;
+    Thread *new_thr = new Thread ("test_mul_2");
+
 
     if (executable == NULL) {
 	printf("Unable to open file %s\n", filename);
 	return;
     }
-    space = new AddrSpace(executable);    
+    printf("initializing space for thread1\n");
+    space = new AddrSpace(executable);
+    printf("initializing space for thread2\n");
+    space2 = new AddrSpace(executable2);    
     currentThread->space = space;
+    space2->InitRegisters();
+    space2->RestoreState();
+    new_thr->space = space2;
+    new_thr->Fork(test_mul_thr, 0);
+    currentThread->Yield();
 
     delete executable;			// close file
+    delete executable2;  
 
     space->InitRegisters();		// set the initial register values
     space->RestoreState();		// load page table register
 
+    printf("Start the First thread's program\n");
     machine->Run();			// jump to the user progam
     ASSERT(FALSE);			// machine->Run never returns;
 					// the address space exits

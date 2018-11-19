@@ -25,6 +25,7 @@
 #include "utility.h"
 #include "translate.h"
 #include "disk.h"
+#include "bitmap.h"
 
 // Definitions related to the size, and format of user memory
 
@@ -32,7 +33,9 @@
 					// the disk sector size, for
 					// simplicity
 
-#define NumPhysPages    32
+// ----------------------------------------------------------------------------------------
+// Change it from 32 to 64 ,cuz I think 32 is too small(and may cause ASSERT wrongs).
+#define NumPhysPages    64
 #define MemorySize 	(NumPhysPages * PageSize)
 #define TLBSize		4		// if there is a TLB, make it small
 
@@ -145,6 +148,8 @@ class Machine {
 
     void Debugger();		// invoke the user program debugger
     void DumpState();		// print the user CPU and memory state 
+    void reportTLB();       // print the tlb records
+    void clearpage();       // Clear all the physical pages
 
 
 // Data structures -- all of these are accessible to Nachos kernel code.
@@ -156,6 +161,8 @@ class Machine {
     char *mainMemory;		// physical memory to store user program,
 				// code and data, while executing
     int registers[NumTotalRegs]; // CPU registers, for executing user programs
+    //--------------------------------------------------------------------------------------
+    BitMap *pagemap; // each bit records the use of phypage.
 
 
 // NOTE: the hardware translation of virtual addresses in the user program
@@ -178,6 +185,8 @@ class Machine {
 
     TranslationEntry *tlb;		// this pointer should be considered 
 					// "read-only" to Nachos kernel code
+    int *LUtime;                // array to record the last used time for a plot
+                    // in TLB, used in LRU algorithm.
 
     TranslationEntry *pageTable;
     unsigned int pageTableSize;

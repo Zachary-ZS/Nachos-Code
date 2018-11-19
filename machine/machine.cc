@@ -61,10 +61,17 @@ Machine::Machine(bool debug)
     mainMemory = new char[MemorySize];
     for (i = 0; i < MemorySize; i++)
       	mainMemory[i] = 0;
+      //------------------------------- init the page map --------------------------------------------------------------
+    pagemap = new BitMap(NumPhysPages);
+    for (i = 0; i < NumPhysPages; i++)
+        pagemap->Clear(i);
 #ifdef USE_TLB
     tlb = new TranslationEntry[TLBSize];
-    for (i = 0; i < TLBSize; i++)
-	tlb[i].valid = FALSE;
+    LUtime = new int[TLBSize];
+    for (i = 0; i < TLBSize; i++){
+    	tlb[i].valid = FALSE;
+        LUtime[i] = 0;
+    }
     pageTable = NULL;
 #else	// use linear page table
     tlb = NULL;
@@ -212,3 +219,12 @@ void Machine::WriteRegister(int num, int value)
 	registers[num] = value;
     }
 
+void Machine::clearpage(){
+    for(int i = 0; i < pageTableSize; i++){
+        int tmp = pageTable[i].physicalPage;
+        if(pagemap->Test(tmp)){
+            pagemap->Clear(tmp);
+            printf("De-allocated physicalPage %d.\n", tmp);
+        }
+    }
+}

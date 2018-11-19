@@ -23,6 +23,7 @@
 #include "copyright.h"
 #include "interrupt.h"
 #include "system.h"
+#include "machine.h"
 
 // String definitions for debugging messages
 
@@ -246,6 +247,9 @@ void
 Interrupt::Halt()
 {
     printf("Machine halting!\n\n");
+#ifdef USER_PROGRAM
+    machine->reportTLB();
+#endif
     stats->Print();
     Cleanup();     // Never returns.
 }

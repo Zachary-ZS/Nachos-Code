@@ -89,7 +89,11 @@ AddrSpace::AddrSpace(OpenFile *executable)
     pageTable = new TranslationEntry[numPages];
     for (i = 0; i < numPages; i++) {
 	pageTable[i].virtualPage = i;	// for now, virtual page # = phys page #
-	pageTable[i].physicalPage = i;
+	//pageTable[i].physicalPage = i;
+    // ----------Now we use pagemap to find an empty page -----------------------------------------------
+    pageTable[i].physicalPage = machine->pagemap->Find();
+    ASSERT(pageTable[i].physicalPage != -1);
+    printf("allocated physicalPage %d.\n", pageTable[i].physicalPage);
 	pageTable[i].valid = TRUE;
 	pageTable[i].use = FALSE;
 	pageTable[i].dirty = FALSE;
@@ -98,22 +102,36 @@ AddrSpace::AddrSpace(OpenFile *executable)
 					// pages to be read-only
     }
     
+    //---------------------------------------------------------------------------------------------------
 // zero out the entire address space, to zero the unitialized data segment 
 // and the stack segment
-    bzero(machine->mainMemory, size);
+//    bzero(machine->mainMemory, size);
 
 // then, copy in the code and data segments into memory
     if (noffH.code.size > 0) {
         DEBUG('a', "Initializing code segment, at 0x%x, size %d\n", 
 			noffH.code.virtualAddr, noffH.code.size);
-        executable->ReadAt(&(machine->mainMemory[noffH.code.virtualAddr]),
-			noffH.code.size, noffH.code.inFileAddr);
+        int pos = noffH.code.inFileAddr;
+        for(int j = 0; j < noffH.code.size; j++){
+            int Tvpn = (noffH.code.virtualAddr + j) / PageSize;
+            int Toff = (noffH.code.virtualAddr + j) % PageSize;
+            int Taddr = pageTable[Tvpn].physicalPage * PageSize + Toff;
+            executable->ReadAt(&(machine->mainMemory[Taddr]),
+            1, pos++);
+        }
+        
     }
     if (noffH.initData.size > 0) {
         DEBUG('a', "Initializing data segment, at 0x%x, size %d\n", 
 			noffH.initData.virtualAddr, noffH.initData.size);
-        executable->ReadAt(&(machine->mainMemory[noffH.initData.virtualAddr]),
-			noffH.initData.size, noffH.initData.inFileAddr);
+        int pos = noffH.initData.inFileAddr;
+        for(int j = 0; j < noffH.initData.size; j++){
+            int Tvpn = (noffH.initData.virtualAddr + j) / PageSize;
+            int Toff = (noffH.initData.virtualAddr + j) % PageSize;
+            int Taddr = pageTable[Tvpn].physicalPage * PageSize + Toff;
+            executable->ReadAt(&(machine->mainMemory[Taddr]),
+            1, pos++);
+        }
     }
 
 }
@@ -160,16 +178,19 @@ AddrSpace::InitRegisters()
     DEBUG('a', "Initializing stack register to %d\n", numPages * PageSize - 16);
 }
 
-//----------------------------------------------------------------------
+//---------------------------------------------------------------------------------------------------
 // AddrSpace::SaveState
 // 	On a context switch, save any machine state, specific
 //	to this address space, that needs saving.
 //
 //	For now, nothing!
+//  Changed. While switching, tlb should be reseted.
 //----------------------------------------------------------------------
 
-void AddrSpace::SaveState() 
-{}
+void AddrSpace::SaveState() {
+    for(int i = 0; i < TLBSize; i++)
+        machine->tlb[i].valid = FALSE;
+}
 
 //----------------------------------------------------------------------
 // AddrSpace::RestoreState
