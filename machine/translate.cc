@@ -213,17 +213,45 @@ Machine::Translate(int virtAddr, int* physAddr, int size, bool writing)
     
     //---------------changed. Now use pagetable if it's not NULL------------------------------
     if (pageTable != NULL) {		// => page table => vpn is index into table
-	if (vpn >= pageTableSize) {
-	    DEBUG('a', "virtual page # %d too large for page table size %d!\n", 
-			virtAddr, pageTableSize);
-	    return AddressErrorException;
-	} else if (!pageTable[vpn].valid) {
+		//if (vpn >= pageTableSize) {
+		//    DEBUG('a', "virtual page # %d & vpn is %d too large for page table size %d!\n", 
+		//		virtAddr, vpn, pageTableSize);
+		//    return AddressErrorException;
+		//}
+		//else{
+			int index = -1;
+			for(i = 0; i < pageTableSize; i++){
+				//printf("\n---Page %d now checking---------------------\n", i);
+				if(!pageTable[i].valid)
+					continue;
+				if(pageTable[i].virtualPage == vpn && pageTable[i].tid == currentThread->getTID()){
+					index = i;
+				}
+			}
+			if(index == -1)
+				return PageFaultException;
+			lut[index] = 1;
+			for (int j = 0; j < NumPhysPages; j++){
+					if(j == index || lut[j] == 0)
+						continue;
+					lut[j]++;
+			}
+			entry = &pageTable[index];
+		//}
+	}
+
+
+	/*
+	 else if (!pageTable[vpn].valid) {
 	    DEBUG('a', "virtual page # %d too large for page table size %d!\n", 
 			virtAddr, pageTableSize);
 	    return PageFaultException;
 	}
+	else if(pageTable[vpn].tid != currentThread->getTID()){
+		return PageFaultException;
+	}
 	entry = &pageTable[vpn];
-    } 
+    } */
     
     else {
     	visitnum++;

@@ -66,6 +66,20 @@ Machine::Machine(bool debug)
     pagemap = new BitMap(NumPhysPages);
     for (i = 0; i < NumPhysPages; i++)
         pagemap->Clear(i);
+    pageTable = new TranslationEntry[NumPhysPages];
+    lut = new int[NumPhysPages];
+    for(i = 0;i < NumPhysPages; i++){
+        pageTable[i].virtualPage = i;
+        pageTable[i].physicalPage = i;
+        pageTable[i].valid = FALSE;
+        pageTable[i].use = FALSE;
+        pageTable[i].dirty = FALSE;
+        pageTable[i].readOnly = FALSE;
+        pageTable[i].tid = -1;
+        lut[i] = 0;
+    }
+    pageTableSize = NumPhysPages;
+
 #endif
 #ifdef USE_TLB
     tlb = new TranslationEntry[TLBSize];
@@ -74,7 +88,7 @@ Machine::Machine(bool debug)
     	tlb[i].valid = FALSE;
         LUtime[i] = 0;
     }
-    pageTable = NULL;
+    //pageTable = NULL;
 #else	// use linear page table
     tlb = NULL;
     pageTable = NULL;
@@ -222,11 +236,13 @@ void Machine::WriteRegister(int num, int value)
     }
 
 void Machine::clearpage(){
-    for(int i = 0; i < pageTableSize; i++){
-        int tmp = pageTable[i].physicalPage;
-        if(pagemap->Test(tmp)){
-            pagemap->Clear(tmp);
-            printf("De-allocated physicalPage %d.\n", tmp);
+    for(int i = 0; i < NumPhysPages; i++){
+
+        if(pageTable[i].tid == currentThread->getTID()){
+            if(pagemap->Test(i)){
+                pagemap->Clear(i);
+                printf("De-allocated physicalPage %d.\n", i);
+            }
         }
     }
 }

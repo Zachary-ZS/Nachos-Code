@@ -75,6 +75,25 @@ int LRU(){
 	ASSERT(index != -1);
 	return index;
 }
+// ------------------LRU for pagetable------------------------------------------------------
+int LRU_pt(){
+    //    Here we need an array to store the state of each tlb plot
+    // which is lut, and we find the least recnetly used plot.
+    int index = -1;
+    int maxt = 0;
+    for(int i = 0; i < NumPhysPages; i++){
+        //printf("%d\n", machine->LUtime[i]);
+        if(machine->lut[i] > maxt){
+            index = i;
+            maxt = machine->lut[i];
+        }
+        //else if(machine->LUtime[i] != 0)
+        //  machine->LUtime[i]++;
+    }
+    ASSERT(index != -1);
+    return index;
+}
+
 void
 ExceptionHandler(ExceptionType which)
 {
@@ -94,7 +113,9 @@ ExceptionHandler(ExceptionType which)
             int index = machine->pagemap->Find();
             if(index == -1){
                 // no empty physical page, needs to kick out one
-                // here we use a quite naive algorithm, we kick out the first phypage.
+                // 
+
+                /* here we use a quite naive algorithm, we kick out the first phypage.
                 for(int j = 0; j < machine->pageTableSize; j++){
                     if(machine->pageTable[j].physicalPage == 0){
                         // dirty -> we should write back
@@ -105,15 +126,21 @@ ExceptionHandler(ExceptionType which)
                         }
                     }
                 }
-                index = 0;
+                index = 0;*/
+                index = LRU_pt();
+                if(machine -> pageTable[index].dirty == TRUE){
+                    ofile -> WriteAt(&(machine->mainMemory[index * PageSize]), PageSize, machine->pageTable[index].virtualPage * PageSize);
+                    //machine -> pageTable[index].valid = FALSE;
+                }
             }
-            printf("--Caused PageFault! Loading page-vpn:%d from VM into pagetable [%d]\n", vpn, index);
+            printf("--Caused PageFault! Loading page-vpn:%d into pagetable [%d] for thr-%d\n", vpn, index, currentThread->getTID());
             ofile->ReadAt(&(machine->mainMemory[index * PageSize]), PageSize, vpn * PageSize);
-            machine->pageTable[vpn].valid = TRUE;
-            machine->pageTable[vpn].physicalPage = index;
-            machine->pageTable[vpn].use = FALSE;
-            machine->pageTable[vpn].dirty = FALSE;
-            machine->pageTable[vpn].readOnly = FALSE;
+            machine->pageTable[index].valid = TRUE;
+            machine->pageTable[index].virtualPage = vpn;
+            machine->pageTable[index].tid = currentThread->getTID();
+            machine->pageTable[index].use = FALSE;
+            machine->pageTable[index].dirty = FALSE;
+            machine->pageTable[index].readOnly = FALSE;
             
             delete ofile;
             

@@ -88,11 +88,27 @@ AddrSpace::AddrSpace(OpenFile *executable)
     DEBUG('a', "Initializing address space, num pages %d, size %d\n", 
 					numPages, size);
 // first, set up the translation 
-    pageTable = new TranslationEntry[numPages];
+//    pageTable = new TranslationEntry[NumPhysPages];
+//    for(i = 0; i < NumPhysPages; i++){
+//        pageTable[i].virtualPage = i;
+//        pageTable[i].physicalPage = i;
+//        pageTable[i].valid = FALSE;
+//        pageTable[i].use = FALSE;
+//        pageTable[i].dirty = FALSE;
+//        pageTable[i].readOnly = FALSE;
+//    }
+
+
+
+
+
+    /*
     for (i = 0; i < numPages; i++) {
 	pageTable[i].virtualPage = i;	// for now, virtual page # = phys page #
     pageTable[i].valid = FALSE;
     }
+*/ // Noted in challenge2
+
 	/*pageTable[i].physicalPage = i;
     // ----------Now we use pagemap to find an empty page -----------------------------------------------
     
@@ -142,6 +158,7 @@ AddrSpace::AddrSpace(OpenFile *executable)
             1, pos++);
         }
     }*/
+
 
     fileSystem->Create("virtual_memory", size);
     OpenFile *ofile = fileSystem->Open("virtual_memory");
@@ -235,6 +252,6 @@ void AddrSpace::SaveState() {
 
 void AddrSpace::RestoreState() 
 {
-    machine->pageTable = pageTable;
-    machine->pageTableSize = numPages;
+    //machine->pageTable = pageTable;
+    //machine->pageTableSize = numPages;
 }

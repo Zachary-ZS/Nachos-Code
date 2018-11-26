@@ -193,6 +193,7 @@ class Machine {
 
     TranslationEntry *pageTable;
     unsigned int pageTableSize;
+    int *lut;       // Last used time for pagetable, when aborted tlb
 
   private:
     bool singleStep;		// drop back into the debugger after each
