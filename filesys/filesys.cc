@@ -266,7 +266,7 @@ FileSystem::Create(char *name, int initialSize)
                     //printf("Writin back to sector %d!!!!!\n", sector);
         	    	freeMap->WriteBack(freeMapFile);
                     //printf("Writin back to sector %d!!!!!\n", sector);
-                    directory->Print();
+                    //directory->Print();
     	        }
                 delete hdr;
     	    }
@@ -320,7 +320,7 @@ OpenFile *
 FileSystem::Open(char *name)
 { 
     //-------------------------------------biaoji-------------------------------
-    Directory *directory;// = new Directory(NumDirEntries);
+    Directory *directory = new Directory(NumDirEntries);
     OpenFile *openFile = NULL;
     int sector;
 
@@ -378,25 +378,22 @@ FileSystem::Remove(char *name)
     directory = new Directory(NumDirEntries);
     if(mulusec >= 0)
         openFile = new OpenFile(mulusec);
-    else
+    else{
         return FALSE;
+    }
     directory->FetchFrom(openFile);
     char *fname = new char[FileNameMaxLen + 1];
     getfilename(name, fname);
     sector = directory->Find(fname);   // search the file in that directory
 
     if (sector == -1) {
+        printf("Can't find that dir!!!\n");
        delete directory;
        return FALSE;             // file not found 
     }
 
-    directory = new Directory(NumDirEntries);
-    directory->FetchFrom(directoryFile);
-    sector = directory->Find(name);
-    if (sector == -1) {
-       delete directory;
-       return FALSE;			 // file not found 
-    }
+
+
     if(directory->isdir(fname)){ // It's a dir file.
         Directory *dir = new Directory(NumDirEntries);
         OpenFile *ofile = new OpenFile(sector);
@@ -405,7 +402,7 @@ FileSystem::Remove(char *name)
             delete dir;
             delete ofile;
             // empty dir, delete it as a normalf later.
-            printf("Deleted directory %s.\n", name);
+            printf("To delete directory %s.\n", name);
         }
         else{
             printf("The directory %s isn't empty, you need to empty the directory before deleting it.\n", name);
@@ -414,6 +411,8 @@ FileSystem::Remove(char *name)
 
     }
 
+
+        printf("Now we're deleting file %s!!!\n", fname);
     fileHdr = new FileHeader;
     fileHdr->FetchFrom(sector);
 
@@ -422,7 +421,7 @@ FileSystem::Remove(char *name)
 
     fileHdr->Deallocate(freeMap);  		// remove data blocks
     freeMap->Clear(sector);			// remove header block
-    directory->Remove(fname);
+    ASSERT(directory->Remove(fname));
 
     freeMap->WriteBack(freeMapFile);		// flush to disk
     directory->WriteBack(openFile);        // flush to disk

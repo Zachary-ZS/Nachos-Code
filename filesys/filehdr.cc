@@ -256,4 +256,6 @@ void FileHeader::set_lastmodtime(){
     //printf("Filed modified at the time %s.\n", lastmodtime);
 }
 
-
+void FileHeader::Extend(){
+    
+}

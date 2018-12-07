@@ -68,7 +68,7 @@ Directory::FetchFrom(OpenFile *file)
                     //printf("----------------------\n");
     (void) file->ReadAt((char *)table, tableSize * sizeof(DirectoryEntry), 0);
     //printf("Fetching>???\n");
-    Print();
+    //Print();
 }
 
 //----------------------------------------------------------------------
@@ -151,8 +151,8 @@ Directory::Add(char *name, int newSector, bool ty = false)
         pi = 0;
     int j = 0;
     for(int i = pi; i < strlen(name); i++)
-        fname[pi++] = name[i];
-    fname[pi] = '\0';
+        fname[j++] = name[i];
+    fname[j] = '\0';
 
     if (FindIndex(fname) != -1)
 	return FALSE;
@@ -185,6 +185,7 @@ Directory::Remove(char *name)
 { 
     int i = FindIndex(name);
 
+    printf("Deleting file %s in table[%d]---\n", name, i);
     if (i == -1)
 	return FALSE; 		// name not in directory
     table[i].inUse = FALSE;
@@ -239,14 +240,16 @@ Directory::Print()
 int
 Directory::findsector(char *name){
                    // printf("Writin back to sector !!!!\n");
-    int len = strlen(name), sec = 1;
+    int len = strlen(name);
+    int sec = 1;
     // Search for it from root.
     OpenFile *dirf = new OpenFile(sec);
                    // printf("Writin back to sector !!!!\n");
     Directory *dir = new Directory(10); // no need to assign table
                    // printf("Writin back to sector !!!!\n");
     dir->FetchFrom(dirf);
-    int pi = 0, tmpi = 0;
+    int pi = 0;
+    int tmpi = 0;
     char tmp[10];
                    // printf("Writin back to sector !!!!\n");
     while(pi < len){
@@ -258,7 +261,7 @@ Directory::findsector(char *name){
             //printf("------into %s %d\n", tmp, sec);
             dirf = new OpenFile(sec);
             //printf("------into %s\n", tmp);
-            dir = new Directory(0);
+            dir = new Directory(10);
             dir->FetchFrom(dirf);
             pi++; tmpi = 0;
         }
