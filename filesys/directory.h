@@ -19,8 +19,9 @@
 
 #include "openfile.h"
 
-#define FileNameMaxLen 		9	// for simplicity, we assume 
+#define FileNameMaxLen 		16	// for simplicity, we assume 
 					// file names are <= 9 characters long
+#define PathMaxLen      32
 
 // The following class defines a "directory entry", representing a file
 // in the directory.  Each entry gives the name of the file, and where
@@ -32,10 +33,13 @@
 class DirectoryEntry {
   public:
     bool inUse;				// Is this directory entry in use?
+    //----------------------------------------------------------------------------------
+    bool type;              // Is this entry a directory file or a normal one?
     int sector;				// Location on disk to find the 
 					//   FileHeader for this file 
     char name[FileNameMaxLen + 1];	// Text name for file, with +1 for 
 					// the trailing '\0'
+    char path[PathMaxLen];
 };
 
 // The following class defines a UNIX-like "directory".  Each entry in
@@ -61,7 +65,7 @@ class Directory {
     int Find(char *name);		// Find the sector number of the 
 					// FileHeader for file: "name"
 
-    bool Add(char *name, int newSector);  // Add a file name into the directory
+    bool Add(char *name, int newSector, bool ty=false);  // Add a file name into the directory
 
     bool Remove(char *name);		// Remove a file from the directory
 
@@ -70,6 +74,9 @@ class Directory {
     void Print();			// Verbose print of the contents
 					//  of the directory -- all the file
 					//  names and their contents.
+    int findsector(char *name);
+    bool isdir(char *name);
+    bool isempty();
 
   private:
     int tableSize;			// Number of directory entries

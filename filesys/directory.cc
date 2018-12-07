@@ -63,7 +63,12 @@ Directory::~Directory()
 void
 Directory::FetchFrom(OpenFile *file)
 {
+                    //printf("Writin back to sector in FetchFrom !!!!\n");
+                    //file->gethdr()->Print();
+                    //printf("----------------------\n");
     (void) file->ReadAt((char *)table, tableSize * sizeof(DirectoryEntry), 0);
+    //printf("Fetching>???\n");
+    Print();
 }
 
 //----------------------------------------------------------------------
@@ -90,9 +95,12 @@ Directory::WriteBack(OpenFile *file)
 int
 Directory::FindIndex(char *name)
 {
-    for (int i = 0; i < tableSize; i++)
+    //printf("adqwdqw, %d\n", tableSize);
+    for (int i = 0; i < tableSize; i++) {
+        //printf("-----%s\n", table[i].name);
         if (table[i].inUse && !strncmp(table[i].name, name, FileNameMaxLen))
-	    return i;
+    	    return i;
+}
     return -1;		// name not in directory
 }
 
@@ -126,17 +134,39 @@ Directory::Find(char *name)
 //	"newSector" -- the disk sector containing the added file's header
 //----------------------------------------------------------------------
 
+//---------------------------------------------------------------------------------------------------------------
+// ty means the type of the directory-entry's file type: 1 means a directory file, 0 for normal
 bool
-Directory::Add(char *name, int newSector)
+Directory::Add(char *name, int newSector, bool ty = false)
 { 
-    if (FindIndex(name) != -1)
+    char fname[FileNameMaxLen + 1];
+    int pi = -1;
+            //printf("???%s\n", name);
+    for(int i = strlen(name) - 1; i >= 0; i--)
+        if(name[i] == '/'){
+            pi = i+1;
+            break;
+        }
+    if(pi == -1)
+        pi = 0;
+    int j = 0;
+    for(int i = pi; i < strlen(name); i++)
+        fname[pi++] = name[i];
+    fname[pi] = '\0';
+
+    if (FindIndex(fname) != -1)
 	return FALSE;
 
+    char *trew[2]={"normal","directory"};
     for (int i = 0; i < tableSize; i++)
         if (!table[i].inUse) {
             table[i].inUse = TRUE;
-            strncpy(table[i].name, name, FileNameMaxLen); 
+            strncpy(table[i].path, name, 20);
+            strncpy(table[i].name, fname, FileNameMaxLen); 
             table[i].sector = newSector;
+            table[i].type = ty;
+            printf("file %s added to directory. It's a %s file.\n", name, trew[ty]);
+            List();
         return TRUE;
 	}
     return FALSE;	// no space.  Fix when we have extensible files.
@@ -185,13 +215,65 @@ Directory::Print()
 { 
     FileHeader *hdr = new FileHeader;
 
+    char *filetypechar[] = {"normal file", "directory-file"};
+
     printf("Directory contents:\n");
     for (int i = 0; i < tableSize; i++)
 	if (table[i].inUse) {
-	    printf("Name: %s, Sector: %d\n", table[i].name, table[i].sector);
+	    printf("Name: %s, Sector: %d, Type: %s\n", table[i].name, table[i].sector, filetypechar[table[i].type]);
 	    hdr->FetchFrom(table[i].sector);
 	    hdr->Print();
+        // if(table[i].type){
+        //     // It's a dir, let's list its files.
+        //     FileHeader *newhdr = new FileHeader;
+        //     newhdr.FetchFrom(table[i].sector);
+        //     printf("")
+        //     newhdr->Print();
+
+        // }
 	}
     printf("\n");
     delete hdr;
+}
+
+int
+Directory::findsector(char *name){
+                   // printf("Writin back to sector !!!!\n");
+    int len = strlen(name), sec = 1;
+    // Search for it from root.
+    OpenFile *dirf = new OpenFile(sec);
+                   // printf("Writin back to sector !!!!\n");
+    Directory *dir = new Directory(10); // no need to assign table
+                   // printf("Writin back to sector !!!!\n");
+    dir->FetchFrom(dirf);
+    int pi = 0, tmpi = 0;
+    char tmp[10];
+                   // printf("Writin back to sector !!!!\n");
+    while(pi < len){
+        tmp[tmpi++] = name[pi++];
+        if(name[pi]=='/'){
+            tmp[tmpi] = '\0';
+            printf("Now we're getting into dir---%s-------\n", tmp);
+            sec = dir->Find(tmp);
+            //printf("------into %s %d\n", tmp, sec);
+            dirf = new OpenFile(sec);
+            //printf("------into %s\n", tmp);
+            dir = new Directory(0);
+            dir->FetchFrom(dirf);
+            pi++; tmpi = 0;
+        }
+    }
+    return sec;
+}
+
+bool Directory::isdir(char *name){
+    int index = FindIndex(name);
+    return table[index].type;
+}
+
+bool Directory::isempty(){
+    for (int i = 0; i < tableSize; i++)
+        if(table[i].inUse)
+            return FALSE;
+    return TRUE;
 }

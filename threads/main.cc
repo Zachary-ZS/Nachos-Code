@@ -152,6 +152,9 @@ main(int argc, char **argv)
 	} else if (!strcmp(*argv, "-t")) {	// performance test
             PerformanceTest();
 	}
+	else if (!strcmp(*argv,"-mkdir")){
+		fileSystem->Create(*(argv + 1), -1);
+	}
 #endif // FILESYS
 #ifdef NETWORK
         if (!strcmp(*argv, "-o")) {

@@ -26,6 +26,7 @@
 
 #include "system.h"
 #include "filehdr.h"
+#include <time.h>
 
 //----------------------------------------------------------------------
 // FileHeader::Allocate
@@ -43,11 +44,29 @@ FileHeader::Allocate(BitMap *freeMap, int fileSize)
 { 
     numBytes = fileSize;
     numSectors  = divRoundUp(fileSize, SectorSize);
-    if (freeMap->NumClear() < numSectors)
-	return FALSE;		// not enough space
+    set_createtime();
+    set_lastvitime();
+    set_lastmodtime();
 
-    for (int i = 0; i < numSectors; i++)
-	dataSectors[i] = freeMap->Find();
+    if (freeMap->NumClear() < numSectors + 1)
+	return FALSE;		// not enough space
+    //------------------------------------------------------------------------------------------------
+    if(numSectors < NumDirect){
+        // why not '='? cuz we need a sector to store indrect-index
+        // In fact, now the NumDirect is only 11 which means that 
+        // most files would use indrect-index.
+        for (int i = 0; i < numSectors; i++)
+            dataSectors[i] = freeMap->Find();
+    }
+    else{
+        for(int i = 0; i < NumDirect; i++)
+            dataSectors[i] = freeMap->Find();
+        int indrect_index[32] = {0};
+        for(int i = 0; i < numSectors - NumDirect + 1; i++)
+            indrect_index[i] = freeMap->Find();
+        synchDisk->WriteSector(dataSectors[NumDirect - 1], (char *)indrect_index);
+    }
+
     return TRUE;
 }
 
@@ -61,10 +80,25 @@ FileHeader::Allocate(BitMap *freeMap, int fileSize)
 void 
 FileHeader::Deallocate(BitMap *freeMap)
 {
-    for (int i = 0; i < numSectors; i++) {
-	ASSERT(freeMap->Test((int) dataSectors[i]));  // ought to be marked!
-	freeMap->Clear((int) dataSectors[i]);
+    if(numSectors < NumDirect){
+        for(int i = 0; i < numSectors; i++){
+            ASSERT(freeMap->Test((int) dataSectors[i]));
+            freeMap->Clear((int) dataSectors[i]);
+        }
     }
+    else{
+        char *ind = new char[SectorSize];
+        synchDisk->ReadSector(dataSectors[NumDirect - 1], ind);
+        for(int i = 0; i < NumDirect; i++)
+            freeMap->Clear((int)dataSectors[i]);
+        for(int i = 0; i < numSectors - NumDirect + 1; i++)
+            freeMap->Clear((int)ind[i*4]);
+    }
+
+ //    for (int i = 0; i < numSectors; i++) {
+	// ASSERT(freeMap->Test((int) dataSectors[i]));  // ought to be marked!
+	// freeMap->Clear((int) dataSectors[i]);
+ //    }
 }
 
 //----------------------------------------------------------------------
@@ -106,7 +140,16 @@ FileHeader::WriteBack(int sector)
 int
 FileHeader::ByteToSector(int offset)
 {
-    return(dataSectors[offset / SectorSize]);
+    if(numSectors < NumDirect)
+        return(dataSectors[offset / SectorSize]);
+    else{
+        if(offset < (NumDirect - 1)*SectorSize)
+            return (dataSectors[offset / SectorSize]);
+        char *ind = new char[SectorSize];
+        synchDisk->ReadSector(dataSectors[NumDirect - 1], ind);
+        int sec = (offset - (NumDirect - 1)*SectorSize) / SectorSize;
+        return ((int)ind[sec * 4]);
+    }
 }
 
 //----------------------------------------------------------------------
@@ -132,19 +175,85 @@ FileHeader::Print()
     int i, j, k;
     char *data = new char[SectorSize];
 
-    printf("FileHeader contents.  File size: %d.  File blocks:\n", numBytes);
-    for (i = 0; i < numSectors; i++)
-	printf("%d ", dataSectors[i]);
+    printf("FileHeader contents.  File size: %d.\n", numBytes);
+    printf("\tFile created at the time %s,\n\tlast visited at %s,  last modified at %s.\n  File blocks:\n", createtime, lastvitime, lastmodtime);
+    
+    if(numSectors < NumDirect){
+        for (i = 0; i < numSectors; i++)
+	       printf("%d ", dataSectors[i]);
+    }
+    else{
+        printf("File is using indrect_index, which is stored in sector %d.  Here are all the physical sectors used:\n", dataSectors[NumDirect - 1]);
+        for (i = 0; i < NumDirect - 1; i++)
+           printf("%d ", dataSectors[i]);
+        char *ind = new char[SectorSize];
+        synchDisk->ReadSector(dataSectors[NumDirect - 1], ind);
+        for(i = 0; i < numSectors - NumDirect + 1; i++){
+            printf("%d ",int(ind[i*4]));
+        }
+    }
     printf("\nFile contents:\n");
+    if(numSectors < NumDirect){
     for (i = k = 0; i < numSectors; i++) {
-	synchDisk->ReadSector(dataSectors[i], data);
+        synchDisk->ReadSector(dataSectors[i], data);
         for (j = 0; (j < SectorSize) && (k < numBytes); j++, k++) {
-	    if ('\040' <= data[j] && data[j] <= '\176')   // isprint(data[j])
-		printf("%c", data[j]);
+	        if ('\040' <= data[j] && data[j] <= '\176')   // isprint(data[j])
+		        printf("%c", data[j]);
             else
-		printf("\\%x", (unsigned char)data[j]);
-	}
+        		printf("\\%x", (unsigned char)data[j]);
+	    }
         printf("\n"); 
     }
+    }
+    else{
+        for (i = k = 0; i < NumDirect - 1; i++) {
+            synchDisk->ReadSector(dataSectors[i], data);
+            for (j = 0; (j < SectorSize) && (k < numBytes); j++, k++) {
+                if ('\040' <= data[j] && data[j] <= '\176')   // isprint(data[j])
+                    printf("%c", data[j]);
+                else
+                    printf("\\%x", (unsigned char)data[j]);
+            }
+            printf("\n"); 
+        }
+        char *ind = new char[SectorSize];
+        synchDisk->ReadSector(dataSectors[NumDirect - 1], ind);
+        for(i = 0; i < numSectors - NumDirect + 1; i++){
+            synchDisk->ReadSector((int)ind[i*4], data);
+            for (j = 0; (j < SectorSize) && (k < numBytes); j++, k++) {
+                if ('\040' <= data[j] && data[j] <= '\176')   // isprint(data[j])
+                    printf("%c", data[j]);
+                else
+                    printf("\\%x", (unsigned char)data[j]);
+            }
+            printf("\n"); 
+        }
+    }
+
     delete [] data;
 }
+void FileHeader::set_createtime(){
+    time_t currentT;
+    time(&currentT);
+    strncpy(createtime, asctime(gmtime(&currentT)), 25);
+    createtime[24] = '\0';
+    printf("Filed created at the time %s.\n", createtime);
+}
+
+void FileHeader::set_lastvitime(){
+    time_t currentT;
+    time(&currentT);
+    strncpy(lastvitime, asctime(gmtime(&currentT)), 25);
+    lastvitime[24] = '\0';
+    //printf("Filed visited at the time %s.\n", lastvitime);
+}
+
+void FileHeader::set_lastmodtime(){
+    time_t currentT;
+    time(&currentT);
+    strncpy(lastmodtime, asctime(gmtime(&currentT)), 25);
+    lastmodtime[24] = '\0';
+    //printf("Filed modified at the time %s.\n", lastmodtime);
+}
+
+

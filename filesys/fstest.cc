@@ -54,9 +54,11 @@ Copy(char *from, char *to)
 	fclose(fp);
 	return;
     }
+                    printf("Writin back to sector !!!!\n");
     
     openFile = fileSystem->Open(to);
     ASSERT(openFile != NULL);
+                    printf("Writin back to sector !!!!\n");
     
 // Copy the data in TransferSize chunks
     buffer = new char[TransferSize];

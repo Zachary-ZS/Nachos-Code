@@ -23,6 +23,7 @@
 #include <strings.h>
 #endif
 
+extern Machine* machine;
 //----------------------------------------------------------------------
 // SwapHeader
 // 	Do little endian to big endian conversion on the bytes in the 
