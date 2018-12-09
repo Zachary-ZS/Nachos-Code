@@ -184,4 +184,17 @@ PerformanceTest()
     }
     stats->Print();
 }
+//----------------------------------------------------------------------------------------------
+void read(){
+    printf("Thread %s starts reading.\n", currentThread->getName());
+    FileRead();
+    fileSystem->Remove(FileName);
+}
 
+void test_rw(){
+    printf("---------------------test for exercise 7:----------------\n");
+    FileWrite();
+    Thread *thread1 = new Thread("Reader");
+    thread1->Fork(read, 0);
+    read();
+}

@@ -50,6 +50,8 @@
 #include "directory.h"
 #include "filehdr.h"
 #include "filesys.h"
+//#include "synchdisk.h"
+#include "system.h"
 
 // Sectors containing the file headers for the bitmap of free sectors,
 // and the directory of files.  These file headers are placed in well-known 
@@ -371,6 +373,7 @@ FileSystem::Remove(char *name)
     OpenFile *openFile;
     int sector;
     int mulusec;
+    
 
     directory = new Directory(NumDirEntries);
     directory->FetchFrom(directoryFile);
@@ -391,7 +394,10 @@ FileSystem::Remove(char *name)
        delete directory;
        return FALSE;             // file not found 
     }
-
+    if(synchDisk->numVisitors[sector]){
+        printf("--Faided to remove the file! There's some thread visiting the file.\n");
+        return FALSE;
+    }
 
 
     if(directory->isdir(fname)){ // It's a dir file.

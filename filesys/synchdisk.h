@@ -46,15 +46,18 @@ class SynchDisk {
     void startwriting(int sector);
     void endwriting(int sector);
 
+    Semaphore *mutex[NumSectors];   // for file query
+    int numReaders[NumSectors];     // record readers' num
+    Lock *readerlock;
+    int numVisitors[NumSectors];    // number of threads visiting the file.
+
   private:
     Disk *disk;		  		// Raw disk device
     Semaphore *semaphore; 		// To synchronize requesting thread 
 					// with the interrupt handler
     Lock *lock;		  		// Only one read/write request
 					// can be sent to the disk at a time
-    Semaphore *mutex[NumSectors];   // for file query
-    int numReaders[NumSectors];     // record readers' num
-    Lock *readerlock;
+
 };
 
 #endif // SYNCHDISK_H

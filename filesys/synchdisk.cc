@@ -45,6 +45,12 @@ SynchDisk::SynchDisk(char* name)
     semaphore = new Semaphore("synch disk", 0);
     lock = new Lock("synch disk lock");
     disk = new Disk(name, DiskRequestDone, (int) this);
+    for (int i = 0; i < NumSectors; i++){
+        mutex[i] = new Semaphore("mutexforfile", 1);
+        numReaders[i] = 0;
+        numVisitors[i] = 0;
+    }
+    readerlock = new Lock("reader lock");
 }
 
 //----------------------------------------------------------------------
