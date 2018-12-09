@@ -11,6 +11,7 @@
 #include "copyright.h"
 #include "system.h"
 #include "console.h"
+//#include "synchconsole.h"
 #include "addrspace.h"
 #include "synch.h"
 
@@ -66,9 +67,11 @@ StartProcess(char *filename)
 // Data structures needed for the console test.  Threads making
 // I/O requests wait on a Semaphore to delay until the I/O completes.
 
-static Console *console;
-static Semaphore *readAvail;
-static Semaphore *writeDone;
+
+//-------------------------------------------------------------------------------------------------
+static Semaphore *readAvail = new Semaphore("readAvail", 0);
+static Semaphore *writeDone = new Semaphore("writeDone", 0);
+
 
 //----------------------------------------------------------------------
 // ConsoleInterruptHandlers
@@ -84,7 +87,7 @@ static void WriteDone(int arg) { writeDone->V(); }
 //	the output.  Stop when the user types a 'q'.
 //----------------------------------------------------------------------
 
-void 
+/*void 
 ConsoleTest (char *in, char *out)
 {
     char ch;
@@ -99,5 +102,53 @@ ConsoleTest (char *in, char *out)
 	console->PutChar(ch);	// echo it!
 	writeDone->P() ;        // wait for write to finish
 	if (ch == 'q') return;  // if q, quit
+    }
+}*/
+class SynchConsole {
+  public:
+    SynchConsole(char *readfile, char *writefile);          // Initialize a synchronous console,
+                    // by initializing the raw console.
+    ~SynchConsole();
+    
+    void PutChar(char ch);
+                    // display a single character.
+    char GetChar();
+
+  private:
+    Console *console;
+    Lock *lock;             // Only one read/write request
+                    // can be sent to the console at a time   
+};
+
+
+static SynchConsole *synchconsole;
+
+SynchConsole::SynchConsole(char *readFile, char *writeFile){
+
+    console = new Console(readFile, writeFile, ReadAvail, WriteDone, 0);
+    lock = new Lock("console");
+}
+void SynchConsole::PutChar(char ch){
+    lock->Acquire();
+    console->PutChar(ch);
+    writeDone->P();
+    lock->Release();
+}
+char SynchConsole::GetChar(){
+    lock->Acquire();
+    readAvail->P();
+    char ch = console->GetChar();
+    lock->Release();
+    return ch;
+}
+
+void ConsoleTest(char *in, char *out){
+    char ch;
+    synchconsole = new SynchConsole(in, out);
+    for(;;){
+        ch = synchconsole->GetChar();
+        synchconsole->PutChar(ch);
+        if(ch == 'q')
+            return;
     }
 }

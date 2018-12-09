@@ -256,6 +256,42 @@ void FileHeader::set_lastmodtime(){
     //printf("Filed modified at the time %s.\n", lastmodtime);
 }
 
-void FileHeader::Extend(){
-    
+void FileHeader::Extend(BitMap *freeMap, int bytes){
+    if(bytes <= 0)
+        return TRUE;
+    // extend by "bytes" bytes
+    numBytes = numBytes + bytes;
+    int origin_sector = numSectors;
+    numSectors = divRoundUp(numBytes, SectorSize);
+    if(origin_sector == numSectors)
+        return TRUE;    // nothing todo cuz the rest of the last sector is enough
+    if(freeMap->NumClear() < numSectors - origin_sector){
+        printf("Sorry! There's No enough space to extend.\n");
+        return FALSE;
+    }
+    // direct index still
+    if(numSectors < NumDirect)
+        for(int i = origin_sector; i < numSectors; i++)
+            dataSectors[i] = freeMap->Find();
+    else if(origin_sector >= NumDirect){
+        // benlaijiushi using indirect_index
+        int ind[32] = {0};
+        synchDisk->ReadSector(dataSectors[NumDirect - 1], (char*)ind);
+
+        for(int i = 0; i < numSectors - origin_sector; i++)
+            ind[origin_sector - NumDirect + 1 + i] = freeMap->Find();
+        synchDisk->WriteSector(dataSectors[NumDirect - 1], (char *)ind);
+    }
+    else{
+        // benlai meiyou jianjie ,we need to add indirect:
+        for(int i = origin_sector; i < NumDirect; i++)
+            dataSectors[i] = freeMap->Find();
+        int indrect_index[32] = {0};
+        for(int i = 0; i < numSectors - NumDirect + 1; i++)
+            indrect_index[i] = freeMap->Find();
+        synchDisk->WriteSector(dataSectors[NumDirect - 1], (char *)indrect_index);
+        printf("We added an indirect index for the file.\n");
+    }
+    printf("Extended the file with %d more sectors.\n", numSectors - origin_sector);
+    return TRUE;
 }

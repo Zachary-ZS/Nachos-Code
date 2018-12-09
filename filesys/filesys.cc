@@ -325,9 +325,9 @@ FileSystem::Open(char *name)
     int sector;
 
     DEBUG('f', "Opening file %s\n", name);
-                    printf("Writin back to sector123 !!!!\n");
+                ///    printf("Writin back to sector123 !!!!\n");
     directory->FetchFrom(directoryFile);
-                    printf("Writin back to sector456 !!!!\n");
+                ///    printf("Writin back to sector456 !!!!\n");
     sector = directory->findsector(name);
                 //    printf("Writin back to sector789 !!!!\n");
     directory = new Directory(NumDirEntries);

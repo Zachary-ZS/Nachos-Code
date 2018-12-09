@@ -107,3 +107,26 @@ SynchDisk::RequestDone()
 { 
     semaphore->V();
 }
+
+void SynchDisk::readerplus(int sector){
+    readerlock->Acquire();
+    numReaders[sector]++;
+    if(numReaders[sector] == 1)
+        mutex[sector]->P();
+    printf("A new reader. Now the total num of readers: %d\n", numReaders[sector]);
+    readerlock->Release();
+}
+void SynchDisk::readerminus(int sector){
+    readerlock->Acquire();
+    numReaders[sector]--;
+    if(numReaders[sector] == 0)
+        mutex[sector]->V();
+    printf("---A reader left. The num of readers now is: %d\n", numReaders[sector]);
+    readerlock->Release();
+}
+void SynchDisk::startwriting(int sector){
+    mutex[sector]->P();
+}
+void SynchDisk::endwriting(int sector){
+    mutex[sector]->V();
+}

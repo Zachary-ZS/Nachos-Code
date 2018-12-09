@@ -75,6 +75,7 @@ OpenFile::Seek(int position)
 int
 OpenFile::Read(char *into, int numBytes)
 {
+    synchDisk->readerplus(sector_position);
    int result = ReadAt(into, numBytes, seekPosition);
    seekPosition += result;
    return result;
@@ -85,6 +86,7 @@ OpenFile::Write(char *into, int numBytes)
 {
    int result = WriteAt(into, numBytes, seekPosition);
    seekPosition += result;
+   //printf("The result is %d and numBytes %d---------------------.\n", result, numBytes);
    return result;
 }
 
@@ -157,10 +159,23 @@ OpenFile::WriteAt(char *from, int numBytes, int position)
     bool firstAligned, lastAligned;
     char *buf;
 
-    if ((numBytes <= 0) || (position >= fileLength))
-	return 0;				// check request
-    if ((position + numBytes) > fileLength)
-	numBytes = fileLength - position;
+    if ((numBytes <= 0) || (position > fileLength)){
+	   //printf("*************%d T %d \n", fileLength, position);
+       return 0;				// check request
+    }
+//-----------------------------------------------------------------------
+    printf("Writing---From position %d , %d bytes.\n", position, numBytes);
+    if ((position + numBytes) > fileLength){
+        OpenFile *freeMapFile = new OpenFile(0);
+        BitMap *freeMap = new BitMap(NumSectors);
+        freeMap->FetchFrom(freeMapFile);
+        hdr->Extend(freeMap, position + numBytes - fileLength);
+        hdr->WriteBack(sector_position);
+        freeMap->WriteBack(freeMapFile);
+        delete freeMapFile;
+
+    }
+	//numBytes = fileLength - position;
     DEBUG('f', "Writing %d bytes at %d, from file of length %d.\n", 	
 			numBytes, position, fileLength);
 

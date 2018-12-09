@@ -107,7 +107,7 @@ main(int argc, char **argv)
       }
     }
 
-    ThreadTest();
+   // ThreadTest();
 #endif
 
     for (argc--, argv++; argc > 0; argc -= argCount, argv += argCount) {
@@ -133,6 +133,7 @@ main(int argc, char **argv)
 	}
 #endif // USER_PROGRAM
 #ifdef FILESYS
+	printf("hhh");
 	if (!strcmp(*argv, "-cp")) { 		// copy from UNIX to Nachos
 	    ASSERT(argc > 2);
 	    Copy(*(argv + 1), *(argv + 2));
