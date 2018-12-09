@@ -55,16 +55,35 @@ FileHeader::Allocate(BitMap *freeMap, int fileSize)
         // why not '='? cuz we need a sector to store indrect-index
         // In fact, now the NumDirect is only 11 which means that 
         // most files would use indrect-index.
-        for (int i = 0; i < numSectors; i++)
-            dataSectors[i] = freeMap->Find();
+        int npos = freeMap->Find_continous(numSectors);
+        if(npos == -1){
+            for (int i = 0; i < numSectors; i++)
+                dataSectors[i] = freeMap->Find();
+        }
+        else{
+            for (int i = 0; i < numSectors; i++)
+                dataSectors[i] = npos + i;   
+        }
+
     }
     else{
-        for(int i = 0; i < NumDirect; i++)
-            dataSectors[i] = freeMap->Find();
-        int indrect_index[32] = {0};
-        for(int i = 0; i < numSectors - NumDirect + 1; i++)
-            indrect_index[i] = freeMap->Find();
-        synchDisk->WriteSector(dataSectors[NumDirect - 1], (char *)indrect_index);
+        int npos = freeMap->Find_continous(numSectors + 1);
+        if(npos == -1){
+            for(int i = 0; i < NumDirect; i++)
+                dataSectors[i] = freeMap->Find();
+            int indrect_index[32] = {0};
+            for(int i = 0; i < numSectors - NumDirect + 1; i++)
+                indrect_index[i] = freeMap->Find();
+            synchDisk->WriteSector(dataSectors[NumDirect - 1], (char *)indrect_index);
+        }
+        else{
+            for(int i = 0; i < NumDirect; i++)
+                dataSectors[i] = npos + i;
+            int indrect_index[32] = {0};
+            for(int i = 0; i < numSectors - NumDirect + 1; i++)
+                indrect_index[i] = npos + NumDirect + i;
+            synchDisk->WriteSector(dataSectors[NumDirect - 1], (char *)indrect_index);   
+        }
     }
 
     return TRUE;
