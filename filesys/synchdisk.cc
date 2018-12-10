@@ -16,6 +16,8 @@
 
 #include "copyright.h"
 #include "synchdisk.h"
+#include "stats.h"
+#include "system.h"
 
 //----------------------------------------------------------------------
 // DiskRequestDone
@@ -50,6 +52,9 @@ SynchDisk::SynchDisk(char* name)
         numReaders[i] = 0;
         numVisitors[i] = 0;
     }
+    for (int i = 0; i < cachesize; i++){
+        cache[i].valid = FALSE;
+    }
     readerlock = new Lock("reader lock");
 }
 
@@ -78,10 +83,51 @@ SynchDisk::~SynchDisk()
 void
 SynchDisk::ReadSector(int sectorNumber, char* data)
 {
-    lock->Acquire();			// only one disk I/O at a time
-    disk->ReadRequest(sectorNumber, data);
-    semaphore->P();			// wait for interrupt
-    lock->Release();
+    int pos = -1;
+    for(int i = 0; i < cachesize; i++)
+        if(cache[i].valid && cache[i].sector == sectorNumber){
+            pos = i;
+            break;
+        }
+    if(pos != -1){
+        printf("cache for disk Hit!\n");
+        cache[pos].lrutime = stats->totalTicks;
+        bcopy(cache[pos].data, data, SectorSize);
+        //disk->HandleInterrupt();
+    }
+    else{
+        lock->Acquire();            // only one disk I/O at a time
+        disk->ReadRequest(sectorNumber, data);
+        semaphore->P();         // wait for interrupt
+        lock->Release();
+
+        int index = -1;
+        for(int i = 0; i < cachesize; i++){
+            if(!cache[i].valid){
+                index = i;
+                break;
+            }
+        }
+        if(index == -1){
+            int minT = cache[0].lrutime, minindex = 0;
+            for(int i = 1; i < cachesize; i++){
+                if(cache[i].lrutime < minT){
+                    minT = cache[i].lrutime;
+                    minindex = i;
+                }
+            }
+            index = minindex;
+        }
+        cache[index].valid = TRUE;
+        cache[index].dirty = FALSE;
+        cache[index].sector = sectorNumber;
+        cache[index].lrutime = stats->totalTicks;
+        bcopy(data, cache[index].data, SectorSize);
+    }
+
+
+
+    
 }
 
 //----------------------------------------------------------------------
@@ -100,6 +146,9 @@ SynchDisk::WriteSector(int sectorNumber, char* data)
     disk->WriteRequest(sectorNumber, data);
     semaphore->P();			// wait for interrupt
     lock->Release();
+    for(int i = 0; i < cachesize; i++)
+        if(cache[i].sector == sectorNumber)
+            cache[i].valid = FALSE;
 }
 
 //----------------------------------------------------------------------

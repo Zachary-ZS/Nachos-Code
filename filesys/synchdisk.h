@@ -14,6 +14,18 @@
 #include "disk.h"
 #include "synch.h"
 
+// Cache for sector contents.
+#define cachesize 4
+
+class CacheEntry{
+public:
+    bool valid;
+    bool dirty;
+    int sector;
+    int lrutime;            // lrutime for LRU algorithm
+    char data[SectorSize];  // data
+};
+
 // The following class defines a "synchronous" disk abstraction.
 // As with other I/O devices, the raw physical disk is an asynchronous device --
 // requests to read or write portions of the disk return immediately,
@@ -50,6 +62,7 @@ class SynchDisk {
     int numReaders[NumSectors];     // record readers' num
     Lock *readerlock;
     int numVisitors[NumSectors];    // number of threads visiting the file.
+    CacheEntry cache[cachesize];
 
   private:
     Disk *disk;		  		// Raw disk device
@@ -57,7 +70,6 @@ class SynchDisk {
 					// with the interrupt handler
     Lock *lock;		  		// Only one read/write request
 					// can be sent to the disk at a time
-
 };
 
 #endif // SYNCHDISK_H
