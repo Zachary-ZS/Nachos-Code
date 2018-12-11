@@ -26,6 +26,7 @@
 #include "syscall.h"
 #include "openfile.h"
 #include "filesys.h"
+#include "directory.h"
 
 //----------------------------------------------------------------------
 // ExceptionHandler
@@ -93,6 +94,52 @@ int LRU_pt(){
     ASSERT(index != -1);
     return index;
 }
+//lab6----------------------------------------------------
+void execute(int addr){
+    // execute a user program
+    char name[16];
+    int index = 0;
+    int ch;
+
+    while(TRUE){
+        machine->ReadMem(addr+index, 1, &ch);
+        if(ch == 0){
+            if(index != 0){
+            name[index] = '\0';
+            break;
+            }
+        }
+        name[index++] = char(ch);
+        //printf("%c\n", char(ch));
+    }
+    name[0] = '.';
+    printf("A new thr running %s.\n", name);
+    OpenFile *executable = fileSystem->Open(name);
+    AddrSpace *space;
+    space = new AddrSpace(executable);
+    currentThread->space = space;
+    delete executable;
+    space->InitRegisters();
+    space->RestoreState();
+    machine->Run();
+}
+struct Info{
+    AddrSpace *space;
+    int PC;
+};
+
+void forker(int addr){
+    Info *info = (Info*)addr;
+    AddrSpace *space = info->space;
+    currentThread->space = space;
+    int pc = info->PC;
+    space->InitRegisters();
+    space->RestoreState();
+    machine->WriteRegister(PCReg, pc);
+    machine->WriteRegister(NextPCReg, pc + 4);
+    machine->Run();
+}
+
 
 void
 ExceptionHandler(ExceptionType which)
@@ -133,7 +180,7 @@ ExceptionHandler(ExceptionType which)
                     //machine -> pageTable[index].valid = FALSE;
                 }
             }
-            printf("--Caused PageFault! Loading page-vpn:%d into pagetable [%d] for thr-%d\n", vpn, index, currentThread->getTID());
+            //printf("--Caused PageFault! Loading page-vpn:%d into pagetable [%d] for thr-%d\n", vpn, index, currentThread->getTID());
             ofile->ReadAt(&(machine->mainMemory[index * PageSize]), PageSize, vpn * PageSize);
             machine->pageTable[index].valid = TRUE;
             machine->pageTable[index].virtualPage = vpn;
@@ -175,6 +222,7 @@ ExceptionHandler(ExceptionType which)
     	}
     	
     }
+    //-----------------------------------------------------------------------------------------------------------------------
     else if(which == SyscallException && type == SC_Exit){
         printf("The program exits...\n");
         machine->clearpage();
@@ -182,6 +230,145 @@ ExceptionHandler(ExceptionType which)
         int nextPC = machine->ReadRegister(NextPCReg);
         machine->WriteRegister(PCReg, nextPC);
     }
+    // lab6
+    else if(which == SyscallException && type == SC_Create){
+        printf("Syscall: Create a file.\n");
+        int addr = machine->ReadRegister(4);
+        char name[FileNameMaxLen + 1];
+        int index = 0, ch;
+        while(TRUE){
+            machine->ReadMem(addr + index, 1, &ch);
+            if(ch == 0){
+                name[index] = '\0';
+                break;
+            }
+            //printf("%c\n", char(ch));
+            name[index++] = char(ch);
+        }
+        name[0] = 'n';
+        printf("Creating a file named %s\n", name);
+        fileSystem->Create(name, SectorSize);
+        machine->PCplus();
+
+    }
+    else if(which == SyscallException && type == SC_Open){
+        printf("Syscall: Open a file.\n");
+        int addr = machine->ReadRegister(4);
+        char name[FileNameMaxLen + 1];
+        int index = 0, ch = 0;
+        while(TRUE){
+            machine->ReadMem(addr + index, 1, &ch);
+            if(ch == 0){
+                name[index] = '\0';
+                break;
+            }
+            name[index++] = char(ch);
+        }
+        printf("Opening file %s.\n", name);
+        OpenFile *openfile = fileSystem->Open(name);
+        if(openfile == NULL){
+            printf("Failed! file not found.\n");
+            machine->WriteRegister(2, 0);
+        }
+        else{
+            machine->WriteRegister(2, int(openfile));
+            printf("Opened the file with opfileID %d.\n", int(openfile));
+        }
+        machine->PCplus();
+        //printf("???\n");
+    }
+    else if(which == SyscallException && type == SC_Close){
+        printf("Syscall: Close a file.\n");
+        int fid = machine->ReadRegister(4); 
+        OpenFile *openfile = (OpenFile*)fid;
+        delete openfile;
+        machine->PCplus();
+    }
+    else if(which == SyscallException && type == SC_Read){
+        printf("Syscall: Read a file.\n");
+        int position = machine->ReadRegister(4);
+        int size = machine->ReadRegister(5);
+        int fid = machine->ReadRegister(6);
+
+        OpenFile *openfile = (OpenFile*)fid;
+        if(openfile == NULL){
+            printf("File not exist!\n");
+        }
+        else{
+            char *tmp = new char[size + 1];
+            int actualsize = openfile->Read(tmp, size);
+            tmp[actualsize] = '\0';
+            for(int i = 0; i < actualsize; i++)
+                machine->WriteMem(position + i, 1,int(tmp[i]));
+            machine->WriteRegister(2, actualsize);
+        }
+        machine->PCplus();
+    }
+    else if(which == SyscallException && type == SC_Write){
+        printf("Syscall: Write a file.\n");
+        int position = machine->ReadRegister(4);
+        int size = machine->ReadRegister(5);
+        int fid = machine->ReadRegister(6);
+
+        char *tmp = new char[size + 1];
+        int ch;
+        for(int i = 0; i < size; i++){
+            machine->ReadMem(position + i, 1, &ch);
+            tmp[i] = char(ch);
+        }
+
+        OpenFile *openfile = (OpenFile*)fid;
+        if(openfile == NULL){
+            printf("File not exist!\n");
+        }
+        else{
+            openfile->Write(tmp, size);
+        }
+        machine->PCplus();
+    }
+    else if(which == SyscallException && type == SC_Exec){
+        printf("Syscall: Exec a user prog.\n");
+        int addr = machine->ReadRegister(4);
+        Thread *newthr = new Thread("thr-side");
+        newthr->Fork(execute, addr);
+        machine->WriteRegister(2, newthr->getTID());
+        machine->PCplus();
+    }
+    else if(which == SyscallException && type == SC_Fork){
+        printf("Syscall: Fork.\n");
+        int funcaddr = machine->ReadRegister(4);
+        /*
+        OpenFile *executable = fileSystem->Open(currentThread->filename);
+        AddrSpace *space = new AddrSpace(executable);
+
+        */
+        AddrSpace *space = currentThread->space;
+        // A new structure  to transmit args to fork
+        Info *info = new Info;
+        info->space = space;
+        info->PC = funcaddr;
+        Thread *newthr = new Thread("thr-son");
+        newthr->Fork(forker, info);
+        machine->WriteRegister(2, newthr->getTID());
+        machine->PCplus();
+    }
+    else if(which == SyscallException && type == SC_Yield){
+        printf("Syscall: Yield.\n");
+        machine->PCplus();
+        currentThread->Yield();
+    }
+    else if(which == SyscallException && type == SC_Join){
+        printf("Syscall: Join.\n");
+        int tid = machine->ReadRegister(4);
+        while(tid_used[tid]){
+            printf("Son-thread hasn't exited.\n");
+            currentThread->Yield();
+        }
+        machine->PCplus();
+    }
+    
+
+
     else {
     	printf("Unexpected user mode exception %d %d\n", which, type);
     	ASSERT(FALSE);

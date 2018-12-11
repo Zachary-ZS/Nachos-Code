@@ -152,6 +152,8 @@ class Machine {
     void DumpState();		// print the user CPU and memory state 
     void reportTLB();       // print the tlb records
     void clearpage();       // Clear all the physical pages
+    // lab6
+    void PCplus();
 
 
 // Data structures -- all of these are accessible to Nachos kernel code.

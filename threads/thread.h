@@ -125,6 +125,7 @@ class Thread {
 	void resetTime() { TimeSlice = TimeSliceMax; }
 	void reduceTime() { TimeSlice--; }
 	bool timeout() { return !TimeSlice; }
+	char *filename;
 //-----------------------------------------------------------------------------
 
   private:

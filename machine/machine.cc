@@ -246,3 +246,9 @@ void Machine::clearpage(){
         }
     }
 }
+
+void Machine::PCplus(){
+    WriteRegister(PrevPCReg, registers[PCReg]);
+    WriteRegister(NextPCReg, registers[NextPCReg] + sizeof(int));
+    WriteRegister(PCReg, registers[PCReg] + sizeof(int));
+}

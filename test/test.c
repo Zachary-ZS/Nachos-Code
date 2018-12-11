@@ -1,6 +1,6 @@
 #include "syscall.h"
-#define M 40
-#define N 40
+#define M 400
+#define N 400
 int num[M][N];
 int main(){
 	int i = 0, j = 0;
